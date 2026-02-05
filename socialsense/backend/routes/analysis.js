@@ -117,6 +117,11 @@ router.post('/estimate', authenticate, async (req, res) => {
       tokenCost += TOKEN_COSTS.marketing_analysis;
     }
 
+    // Video upload costs 20 tokens (Whisper + GPT-4o vision)
+    if (has_video) {
+      tokenCost += TOKEN_COSTS.video_analysis;
+    }
+
     tokenCost = Math.max(1, tokenCost);
 
     const userBalance = req.profile?.token_balance || 0;
@@ -135,7 +140,7 @@ router.post('/estimate', authenticate, async (req, res) => {
           : Math.max(1, Math.ceil(commentCount / 100) * TOKEN_COSTS.tiktok_per_100_comments),
         text_analysis: include_text_analysis ? TOKEN_COSTS.text_analysis : 0,
         marketing: include_marketing ? TOKEN_COSTS.marketing_analysis : 0,
-        video: 0, // Video analysis is included free
+        video: has_video ? TOKEN_COSTS.video_analysis : 0,
       },
     });
   } catch (error) {
@@ -220,6 +225,9 @@ router.post('/comments', authenticate, uploadFields, async (req, res) => {
     const includeMkt = include_marketing === 'true' || include_marketing === true;
     if (includeText) tokenCost += TOKEN_COSTS.text_analysis;
     if (includeMkt) tokenCost += TOKEN_COSTS.marketing_analysis;
+
+    // Video upload costs 20 tokens (Whisper + GPT-4o vision)
+    if (videoFile) tokenCost += TOKEN_COSTS.video_analysis;
 
     // 3. Check Balance & Deduct
     const { data: deductResult, error: deductError } = await supabaseAdmin.rpc('deduct_tokens', {

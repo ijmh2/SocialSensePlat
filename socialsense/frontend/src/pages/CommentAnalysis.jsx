@@ -409,11 +409,11 @@ const CommentAnalysis = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                   <VideoFile sx={{ color: '#6C63FF' }} />
                   <Typography variant="body1" fontWeight={600} sx={{ color: '#3D4852' }}>
-                    Enhance with Video Upload (Free)
+                    Enhance with Video Upload (+20 tokens)
                   </Typography>
                 </Box>
                 <Typography variant="body2" sx={{ color: '#6B7280', mb: 2 }}>
-                  Upload your video file to include audio transcription and visual analysis in the AI insights — no extra token cost.
+                  Upload your video file to include audio transcription and visual analysis in the AI insights.
                 </Typography>
                 {videoFile ? (
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, borderRadius: '12px', boxShadow: neumorphShadows.extrudedSmall, background: '#E0E5EC' }}>
@@ -625,13 +625,13 @@ const CommentAnalysis = () => {
                         <Typography variant="body2" sx={{ color: '#3D4852' }}>{estimate.breakdown.marketing} tokens</Typography>
                       </Box>
                     )}
-                    {videoFile && (
+                    {estimate.breakdown?.video > 0 && (
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <VideoFile sx={{ fontSize: 16, color: '#38B2AC' }} />
+                          <VideoFile sx={{ fontSize: 16, color: '#6C63FF' }} />
                           <Typography variant="body2" sx={{ color: '#3D4852' }}>Video Analysis</Typography>
                         </Box>
-                        <Chip label="Included" size="small" sx={{ background: '#38B2AC', color: 'white', fontWeight: 600 }} />
+                        <Typography variant="body2" sx={{ color: '#3D4852' }}>{estimate.breakdown.video} tokens</Typography>
                       </Box>
                     )}
                     <Divider sx={{ my: 2, opacity: 0.3 }} />

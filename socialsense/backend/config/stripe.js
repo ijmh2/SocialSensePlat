@@ -50,7 +50,8 @@ export const TOKEN_COSTS = {
   text_analysis: 5,
   // Marketing analysis addon
   marketing_analysis: 5,
-  // Video upload (frames + audio transcription) is included free
+  // Video upload (frames + Whisper transcription + GPT-4o vision)
+  video_analysis: 20,
 };
 
 export default stripe;
