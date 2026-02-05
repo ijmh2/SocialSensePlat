@@ -393,7 +393,7 @@ router.get('/:id/export', authenticate, async (req, res) => {
 /**
  * Extract frames from video using FFmpeg
  */
-async function extractVideoFrames(videoPath, framesPerSecond = 1) {
+async function extractVideoFrames(videoPath, framesPerSecond = 2) {
   const tempDir = os.tmpdir();
   const framePrefix = `frame-${Date.now()}`;
 
@@ -401,32 +401,37 @@ async function extractVideoFrames(videoPath, framesPerSecond = 1) {
     const frames = [];
     const outputPattern = path.join(tempDir, `${framePrefix}-%03d.jpg`);
 
+    // Extract 1 frame every N seconds, max 20 frames, good quality JPEG
     const ffmpeg = spawn('ffmpeg', [
       '-i', videoPath,
-      '-vf', `fps=1/${framesPerSecond}`,
-      '-frames:v', '30',
-      '-q:v', '5',
+      '-vf', `fps=1/${framesPerSecond},scale=512:-1`,  // Resize to 512px width for API limits
+      '-frames:v', '20',
+      '-q:v', '2',  // Higher quality (lower = better, 2-5 is good)
+      '-y',  // Overwrite existing
       outputPattern,
     ]);
 
+    let stderr = '';
+    ffmpeg.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+
     ffmpeg.on('error', (err) => {
       if (err.code === 'ENOENT') {
+        console.error('[Video] FFmpeg not found');
         reject(new Error('ffmpeg not found. Please install ffmpeg to use video analysis features.'));
       } else {
+        console.error('[Video] FFmpeg spawn error:', err);
         reject(err);
       }
     });
 
     ffmpeg.on('close', async (code) => {
       if (code !== 0) {
-        try {
-          const imageBuffer = await fs.readFile(videoPath);
-          resolve([imageBuffer.toString('base64')]);
-          return;
-        } catch {
-          reject(new Error('Failed to process video with ffmpeg.'));
-          return;
-        }
+        console.error(`[Video] FFmpeg exited with code ${code}`);
+        console.error('[Video] FFmpeg stderr:', stderr.slice(-500));
+        reject(new Error('Failed to extract frames from video.'));
+        return;
       }
 
       try {
@@ -435,20 +440,34 @@ async function extractVideoFrames(videoPath, framesPerSecond = 1) {
           .filter(f => f.startsWith(framePrefix) && f.endsWith('.jpg'))
           .sort();
 
-        for (const file of frameFiles.slice(0, 20)) {
+        console.log(`[Video] Found ${frameFiles.length} frame files`);
+
+        for (const file of frameFiles.slice(0, 15)) {  // Limit to 15 frames
           const framePath = path.join(tempDir, file);
           const frameBuffer = await fs.readFile(framePath);
-          frames.push(frameBuffer.toString('base64'));
+
+          // Only include frames larger than 1KB (valid images)
+          if (frameBuffer.length > 1024) {
+            frames.push(frameBuffer.toString('base64'));
+          }
+          await fs.unlink(framePath).catch(() => {});
+        }
+
+        // Clean up any remaining frames
+        for (const file of frameFiles.slice(15)) {
+          const framePath = path.join(tempDir, file);
           await fs.unlink(framePath).catch(() => {});
         }
 
         if (frames.length === 0) {
-          reject(new Error('No frames extracted from video.'));
+          reject(new Error('No valid frames extracted from video.'));
           return;
         }
 
+        console.log(`[Video] Successfully extracted ${frames.length} frames`);
         resolve(frames);
       } catch (err) {
+        console.error('[Video] Frame reading error:', err);
         reject(err);
       }
     });

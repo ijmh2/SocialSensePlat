@@ -6,6 +6,19 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+/**
+ * Detect image MIME type from base64 data
+ */
+function detectImageMimeType(base64Data) {
+  // Check magic bytes at start of base64
+  if (base64Data.startsWith('/9j/')) return 'image/jpeg';
+  if (base64Data.startsWith('iVBORw0KGgo')) return 'image/png';
+  if (base64Data.startsWith('R0lGOD')) return 'image/gif';
+  if (base64Data.startsWith('UklGR')) return 'image/webp';
+  // Default to JPEG for FFmpeg extracted frames
+  return 'image/jpeg';
+}
+
 const THEME_ANALYSIS_THRESHOLD = 3000;
 
 /**
@@ -182,27 +195,38 @@ Based on the comments AND the product image provided:
   const userContent = [{ type: 'text', text: prompt }];
 
   if (marketingContext?.image_base64) {
+    const mimeType = detectImageMimeType(marketingContext.image_base64);
+    console.log(`[AI] Product image MIME type detected: ${mimeType}`);
     userContent.push({
       type: 'image_url',
       image_url: {
-        url: `data:image/jpeg;base64,${marketingContext.image_base64}`,
+        url: `data:${mimeType};base64,${marketingContext.image_base64}`,
+        detail: 'auto',
       },
     });
   }
 
   if (videoFrames && videoFrames.length > 0) {
-    const selectedFrames = videoFrames.slice(0, 15);
-    userContent.push({
-      type: 'text',
-      text: `\n\n[The following ${selectedFrames.length} images are frames extracted from the creator's video. Use them to understand the visual content and production quality:]`,
-    });
-    for (const frame of selectedFrames) {
+    // Filter out any empty or invalid frames
+    const validFrames = videoFrames.filter(frame => frame && frame.length > 100);
+    const selectedFrames = validFrames.slice(0, 10); // Reduce to 10 frames to avoid token limits
+
+    if (selectedFrames.length > 0) {
+      console.log(`[AI] Adding ${selectedFrames.length} video frames to analysis`);
       userContent.push({
-        type: 'image_url',
-        image_url: {
-          url: `data:image/jpeg;base64,${frame}`,
-        },
+        type: 'text',
+        text: `\n\n[The following ${selectedFrames.length} images are frames extracted from the creator's video. Use them to understand the visual content and production quality:]`,
       });
+      for (const frame of selectedFrames) {
+        const mimeType = detectImageMimeType(frame);
+        userContent.push({
+          type: 'image_url',
+          image_url: {
+            url: `data:${mimeType};base64,${frame}`,
+            detail: 'low', // Use low detail for frames to reduce tokens
+          },
+        });
+      }
     }
   }
 
