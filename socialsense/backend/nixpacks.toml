@@ -1,0 +1,10 @@
+# Railway/Nixpacks configuration for SocialSense Backend
+
+[phases.setup]
+nixPkgs = ["ffmpeg"]
+
+[phases.install]
+cmds = ["npm ci || npm install"]
+
+[start]
+cmd = "node server.js"
