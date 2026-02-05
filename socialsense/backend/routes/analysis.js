@@ -227,7 +227,12 @@ router.post('/comments', authenticate, uploadFields, async (req, res) => {
     if (includeMkt) tokenCost += TOKEN_COSTS.marketing_analysis;
 
     // Video upload costs 20 tokens (Whisper + GPT-4o vision)
-    if (videoFile) tokenCost += TOKEN_COSTS.video_analysis;
+    if (videoFile) {
+      tokenCost += TOKEN_COSTS.video_analysis;
+      console.log(`[Analysis] Video file detected: ${videoFile.originalname} (${(videoFile.size / 1024 / 1024).toFixed(1)}MB) - adding ${TOKEN_COSTS.video_analysis} tokens`);
+    }
+
+    console.log(`[Analysis] Total token cost: ${tokenCost} (scraping: ${platform === 'youtube' ? Math.max(1, Math.ceil(commentsToFetch / 1000)) : Math.max(1, Math.ceil(commentsToFetch / 100))}, text: ${includeText ? TOKEN_COSTS.text_analysis : 0}, marketing: ${includeMkt ? TOKEN_COSTS.marketing_analysis : 0}, video: ${videoFile ? TOKEN_COSTS.video_analysis : 0})`);
 
     // 3. Check Balance & Deduct
     const { data: deductResult, error: deductError } = await supabaseAdmin.rpc('deduct_tokens', {

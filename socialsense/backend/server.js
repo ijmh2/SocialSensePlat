@@ -17,7 +17,9 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Trust proxy for Railway/Vercel (needed for rate limiting behind reverse proxy)
-app.set('trust proxy', 1);
+// Must be set BEFORE any middleware that uses it
+app.set('trust proxy', true);
+console.log('✅ Trust proxy enabled');
 
 // Security middleware
 app.use(helmet());
