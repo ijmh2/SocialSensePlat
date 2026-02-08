@@ -1,71 +1,85 @@
 import { createTheme, alpha } from '@mui/material/styles';
 
-// Neumorphism Design System Colors
-const neumorphColors = {
-  background: '#E0E5EC',
-  foreground: '#3D4852',
-  muted: '#6B7280',
-  accent: '#6C63FF',
-  accentLight: '#8B84FF',
-  accentSecondary: '#38B2AC',
-  placeholder: '#A0AEC0',
+// Clean Blue & White Design System
+const colors = {
+  // Base Light Palette
+  background: '#FFFFFF',
+  surface: '#F8FAFC',
+  surfaceHover: '#F1F5F9',
+  border: '#E2E8F0',
+  textPrimary: '#0F172A',
+  textSecondary: '#475569',
+  textMuted: '#94A3B8',
 
-  // Shadow colors (RGBA for smoothness)
-  shadowLight: 'rgba(255, 255, 255, 0.5)',
-  shadowLightStrong: 'rgba(255, 255, 255, 0.6)',
-  shadowDark: 'rgb(163, 177, 198, 0.6)',
-  shadowDarkStrong: 'rgb(163, 177, 198, 0.7)',
+  // Blue Accent Colors
+  primary: '#1E40AF',
+  primaryHover: '#1E3A8A',
+  primaryLight: '#3B82F6',
+  primaryGlow: 'rgba(30, 64, 175, 0.1)',
+
+  // Status Colors
+  success: '#16A34A',
+  error: '#DC2626',
+  warning: '#D97706',
+  info: '#0EA5E9',
 };
 
-// Neumorphic shadow presets
-export const neumorphShadows = {
-  // Extruded (raised) states
-  extruded: `9px 9px 16px ${neumorphColors.shadowDark}, -9px -9px 16px ${neumorphColors.shadowLight}`,
-  extrudedHover: `12px 12px 20px ${neumorphColors.shadowDarkStrong}, -12px -12px 20px ${neumorphColors.shadowLightStrong}`,
-  extrudedSmall: `5px 5px 10px ${neumorphColors.shadowDark}, -5px -5px 10px ${neumorphColors.shadowLight}`,
+// Soft shadow presets (not neumorphic)
+export const shadows = {
+  sm: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+  base: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)',
+  md: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)',
+  lg: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)',
+  xl: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+  card: '0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px -1px rgba(0, 0, 0, 0.08)',
+  cardHover: '0 4px 12px -2px rgba(0, 0, 0, 0.12), 0 2px 6px -2px rgba(0, 0, 0, 0.08)',
+  button: '0 1px 2px 0 rgba(30, 64, 175, 0.15)',
+  buttonHover: '0 4px 8px -2px rgba(30, 64, 175, 0.25)',
+};
 
-  // Inset (pressed) states
-  inset: `inset 6px 6px 10px ${neumorphColors.shadowDark}, inset -6px -6px 10px ${neumorphColors.shadowLight}`,
-  insetDeep: `inset 10px 10px 20px ${neumorphColors.shadowDarkStrong}, inset -10px -10px 20px ${neumorphColors.shadowLightStrong}`,
-  insetSmall: `inset 3px 3px 6px ${neumorphColors.shadowDark}, inset -3px -3px 6px ${neumorphColors.shadowLight}`,
+// Gradient presets
+export const gradients = {
+  primary: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)',
+  primarySubtle: 'linear-gradient(135deg, rgba(30, 64, 175, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%)',
+  success: 'linear-gradient(135deg, #16A34A 0%, #22C55E 100%)',
 };
 
 const theme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: neumorphColors.accent,
-      light: neumorphColors.accentLight,
-      dark: '#5A52E0',
+      main: colors.primary,
+      light: colors.primaryLight,
+      dark: colors.primaryHover,
       contrastText: '#FFFFFF',
     },
     secondary: {
-      main: neumorphColors.accentSecondary,
-      light: '#4FD1C5',
-      dark: '#2C9A8F',
+      main: colors.textSecondary,
+      light: colors.textMuted,
+      dark: colors.textPrimary,
       contrastText: '#FFFFFF',
     },
     background: {
-      default: neumorphColors.background,
-      paper: neumorphColors.background,
+      default: colors.background,
+      paper: colors.surface,
     },
     text: {
-      primary: neumorphColors.foreground,
-      secondary: neumorphColors.muted,
+      primary: colors.textPrimary,
+      secondary: colors.textSecondary,
     },
     error: {
-      main: '#E53E3E',
+      main: colors.error,
     },
     warning: {
-      main: '#DD6B20',
+      main: colors.warning,
     },
     success: {
-      main: neumorphColors.accentSecondary,
+      main: colors.success,
     },
     info: {
-      main: neumorphColors.accent,
+      main: colors.info,
     },
-    divider: 'rgba(0, 0, 0, 0.05)',
+    divider: colors.border,
   },
 
   typography: {
@@ -74,44 +88,44 @@ const theme = createTheme({
       fontFamily: '"Plus Jakarta Sans", sans-serif',
       fontWeight: 800,
       letterSpacing: '-0.02em',
-      color: neumorphColors.foreground,
+      color: colors.textPrimary,
     },
     h2: {
       fontFamily: '"Plus Jakarta Sans", sans-serif',
       fontWeight: 700,
       letterSpacing: '-0.02em',
-      color: neumorphColors.foreground,
+      color: colors.textPrimary,
     },
     h3: {
       fontFamily: '"Plus Jakarta Sans", sans-serif',
       fontWeight: 700,
       letterSpacing: '-0.01em',
-      color: neumorphColors.foreground,
+      color: colors.textPrimary,
     },
     h4: {
       fontFamily: '"Plus Jakarta Sans", sans-serif',
       fontWeight: 700,
-      color: neumorphColors.foreground,
+      color: colors.textPrimary,
     },
     h5: {
       fontFamily: '"Plus Jakarta Sans", sans-serif',
       fontWeight: 600,
-      color: neumorphColors.foreground,
+      color: colors.textPrimary,
     },
     h6: {
       fontFamily: '"Plus Jakarta Sans", sans-serif',
       fontWeight: 600,
-      color: neumorphColors.foreground,
+      color: colors.textPrimary,
     },
     body1: {
       fontFamily: '"DM Sans", sans-serif',
       fontWeight: 400,
-      color: neumorphColors.foreground,
+      color: colors.textPrimary,
     },
     body2: {
       fontFamily: '"DM Sans", sans-serif',
       fontWeight: 400,
-      color: neumorphColors.muted,
+      color: colors.textSecondary,
     },
     button: {
       fontFamily: '"DM Sans", sans-serif',
@@ -121,14 +135,14 @@ const theme = createTheme({
   },
 
   shape: {
-    borderRadius: 16,
+    borderRadius: 12,
   },
 
   components: {
     MuiCssBaseline: {
       styleOverrides: {
         body: {
-          backgroundColor: neumorphColors.background,
+          backgroundColor: colors.background,
           scrollBehavior: 'smooth',
         },
         '*::-webkit-scrollbar': {
@@ -136,15 +150,14 @@ const theme = createTheme({
           height: '8px',
         },
         '*::-webkit-scrollbar-track': {
-          background: neumorphColors.background,
-          boxShadow: neumorphShadows.insetSmall,
+          background: colors.surface,
           borderRadius: '4px',
         },
         '*::-webkit-scrollbar-thumb': {
-          background: neumorphColors.muted,
+          background: colors.border,
           borderRadius: '4px',
           '&:hover': {
-            background: neumorphColors.foreground,
+            background: colors.textMuted,
           },
         },
       },
@@ -153,43 +166,41 @@ const theme = createTheme({
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: 16,
-          padding: '12px 24px',
-          fontSize: '0.95rem',
+          borderRadius: 10,
+          padding: '10px 20px',
+          fontSize: '0.9rem',
           fontWeight: 500,
-          boxShadow: neumorphShadows.extrudedSmall,
-          border: 'none',
-          transition: 'all 300ms ease-out',
+          boxShadow: 'none',
+          transition: 'all 200ms ease-out',
           '&:hover': {
-            boxShadow: neumorphShadows.extruded,
+            boxShadow: shadows.button,
             transform: 'translateY(-1px)',
           },
           '&:active': {
-            boxShadow: neumorphShadows.insetSmall,
-            transform: 'translateY(0.5px)',
+            transform: 'translateY(0)',
           },
         },
         contained: {
-          background: neumorphColors.accent,
+          background: gradients.primary,
           color: '#FFFFFF',
           '&:hover': {
-            background: neumorphColors.accentLight,
+            background: gradients.primary,
+            boxShadow: shadows.buttonHover,
           },
         },
         outlined: {
-          background: neumorphColors.background,
-          color: neumorphColors.foreground,
-          border: 'none',
+          background: colors.background,
+          color: colors.primary,
+          borderColor: colors.border,
           '&:hover': {
-            background: neumorphColors.background,
-            border: 'none',
+            background: colors.surface,
+            borderColor: colors.primary,
           },
         },
         text: {
-          boxShadow: 'none',
+          color: colors.primary,
           '&:hover': {
-            boxShadow: 'none',
-            background: alpha(neumorphColors.accent, 0.1),
+            background: colors.primaryGlow,
           },
         },
       },
@@ -198,11 +209,14 @@ const theme = createTheme({
     MuiCard: {
       styleOverrides: {
         root: {
-          background: neumorphColors.background,
-          borderRadius: 24,
-          boxShadow: neumorphShadows.extruded,
-          border: 'none',
-          transition: 'all 300ms ease-out',
+          background: colors.background,
+          borderRadius: 16,
+          border: `1px solid ${colors.border}`,
+          boxShadow: shadows.card,
+          transition: 'all 200ms ease-out',
+          '&:hover': {
+            boxShadow: shadows.cardHover,
+          },
         },
       },
     },
@@ -210,17 +224,20 @@ const theme = createTheme({
     MuiPaper: {
       styleOverrides: {
         root: {
-          background: neumorphColors.background,
+          background: colors.background,
           backgroundImage: 'none',
         },
         elevation1: {
-          boxShadow: neumorphShadows.extrudedSmall,
+          boxShadow: shadows.sm,
+          border: `1px solid ${colors.border}`,
         },
         elevation2: {
-          boxShadow: neumorphShadows.extruded,
+          boxShadow: shadows.base,
+          border: `1px solid ${colors.border}`,
         },
         elevation3: {
-          boxShadow: neumorphShadows.extrudedHover,
+          boxShadow: shadows.md,
+          border: `1px solid ${colors.border}`,
         },
       },
     },
@@ -229,30 +246,29 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           '& .MuiOutlinedInput-root': {
-            background: neumorphColors.background,
-            borderRadius: 16,
-            boxShadow: neumorphShadows.inset,
-            transition: 'all 300ms ease-out',
+            background: colors.background,
+            borderRadius: 10,
+            transition: 'all 200ms ease-out',
             '& fieldset': {
-              border: 'none',
+              borderColor: colors.border,
             },
             '&:hover fieldset': {
-              border: 'none',
+              borderColor: colors.textMuted,
             },
             '&.Mui-focused': {
-              boxShadow: neumorphShadows.insetDeep,
               '& fieldset': {
-                border: `2px solid ${neumorphColors.accent}`,
+                borderColor: colors.primary,
+                borderWidth: 2,
               },
             },
           },
           '& .MuiInputLabel-root': {
-            color: neumorphColors.muted,
+            color: colors.textMuted,
           },
           '& .MuiOutlinedInput-input': {
-            color: neumorphColors.foreground,
+            color: colors.textPrimary,
             '&::placeholder': {
-              color: neumorphColors.placeholder,
+              color: colors.textMuted,
             },
           },
         },
@@ -262,19 +278,17 @@ const theme = createTheme({
     MuiChip: {
       styleOverrides: {
         root: {
-          borderRadius: 12,
+          borderRadius: 8,
           fontWeight: 500,
-          border: 'none',
         },
         filled: {
-          boxShadow: neumorphShadows.extrudedSmall,
-          background: neumorphColors.background,
-          color: neumorphColors.foreground,
+          background: colors.surface,
+          color: colors.textPrimary,
+          border: `1px solid ${colors.border}`,
         },
         outlined: {
-          boxShadow: neumorphShadows.insetSmall,
-          background: neumorphColors.background,
-          border: 'none',
+          background: colors.background,
+          borderColor: colors.border,
         },
       },
     },
@@ -282,8 +296,11 @@ const theme = createTheme({
     MuiIconButton: {
       styleOverrides: {
         root: {
-          borderRadius: 16,
-          transition: 'all 300ms ease-out',
+          borderRadius: 10,
+          transition: 'all 200ms ease-out',
+          '&:hover': {
+            background: colors.primaryGlow,
+          },
         },
       },
     },
@@ -291,8 +308,8 @@ const theme = createTheme({
     MuiDrawer: {
       styleOverrides: {
         paper: {
-          background: neumorphColors.background,
-          border: 'none',
+          background: colors.background,
+          borderRight: `1px solid ${colors.border}`,
         },
       },
     },
@@ -300,8 +317,9 @@ const theme = createTheme({
     MuiAppBar: {
       styleOverrides: {
         root: {
-          background: neumorphColors.background,
-          boxShadow: neumorphShadows.extrudedSmall,
+          background: colors.background,
+          boxShadow: shadows.sm,
+          borderBottom: `1px solid ${colors.border}`,
         },
       },
     },
@@ -309,25 +327,28 @@ const theme = createTheme({
     MuiAlert: {
       styleOverrides: {
         root: {
-          borderRadius: 16,
-          boxShadow: neumorphShadows.extrudedSmall,
-          border: 'none',
+          borderRadius: 10,
+          border: '1px solid',
         },
         standardError: {
-          background: neumorphColors.background,
-          color: '#E53E3E',
+          background: '#FEF2F2',
+          borderColor: '#FECACA',
+          color: colors.error,
         },
         standardWarning: {
-          background: neumorphColors.background,
-          color: '#DD6B20',
+          background: '#FFFBEB',
+          borderColor: '#FDE68A',
+          color: colors.warning,
         },
         standardInfo: {
-          background: neumorphColors.background,
-          color: neumorphColors.accent,
+          background: '#EFF6FF',
+          borderColor: '#BFDBFE',
+          color: colors.primary,
         },
         standardSuccess: {
-          background: neumorphColors.background,
-          color: neumorphColors.accentSecondary,
+          background: '#F0FDF4',
+          borderColor: '#BBF7D0',
+          color: colors.success,
         },
       },
     },
@@ -336,13 +357,12 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: 8,
-          height: 8,
-          background: neumorphColors.background,
-          boxShadow: neumorphShadows.insetSmall,
+          height: 6,
+          background: colors.surface,
         },
         bar: {
           borderRadius: 8,
-          background: `linear-gradient(90deg, ${neumorphColors.accent} 0%, ${neumorphColors.accentLight} 100%)`,
+          background: gradients.primary,
         },
       },
     },
@@ -350,7 +370,7 @@ const theme = createTheme({
     MuiCircularProgress: {
       styleOverrides: {
         root: {
-          color: neumorphColors.accent,
+          color: colors.primary,
         },
       },
     },
@@ -358,12 +378,14 @@ const theme = createTheme({
     MuiTableCell: {
       styleOverrides: {
         root: {
-          borderBottom: 'none',
-          color: neumorphColors.foreground,
+          borderBottom: `1px solid ${colors.border}`,
+          color: colors.textPrimary,
+          padding: '16px',
         },
         head: {
           fontWeight: 600,
-          color: neumorphColors.muted,
+          color: colors.textSecondary,
+          background: colors.surface,
         },
       },
     },
@@ -372,7 +394,7 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           '&:hover': {
-            background: alpha(neumorphColors.accent, 0.05),
+            background: colors.surface,
           },
         },
       },
@@ -383,9 +405,9 @@ const theme = createTheme({
         root: {
           textTransform: 'none',
           fontWeight: 500,
-          color: neumorphColors.muted,
+          color: colors.textSecondary,
           '&.Mui-selected': {
-            color: neumorphColors.accent,
+            color: colors.primary,
           },
         },
       },
@@ -394,8 +416,9 @@ const theme = createTheme({
     MuiTabs: {
       styleOverrides: {
         indicator: {
-          background: neumorphColors.accent,
-          borderRadius: 4,
+          background: colors.primary,
+          borderRadius: 2,
+          height: 3,
         },
       },
     },
@@ -403,8 +426,9 @@ const theme = createTheme({
     MuiMenu: {
       styleOverrides: {
         paper: {
-          borderRadius: 16,
-          boxShadow: neumorphShadows.extruded,
+          borderRadius: 12,
+          border: `1px solid ${colors.border}`,
+          boxShadow: shadows.lg,
           marginTop: 8,
         },
       },
@@ -413,10 +437,10 @@ const theme = createTheme({
     MuiMenuItem: {
       styleOverrides: {
         root: {
-          borderRadius: 8,
+          borderRadius: 6,
           margin: '4px 8px',
           '&:hover': {
-            background: alpha(neumorphColors.accent, 0.1),
+            background: colors.surface,
           },
         },
       },
@@ -433,13 +457,13 @@ const theme = createTheme({
     MuiStepLabel: {
       styleOverrides: {
         label: {
-          color: neumorphColors.muted,
+          color: colors.textMuted,
           '&.Mui-active': {
-            color: neumorphColors.accent,
+            color: colors.primary,
             fontWeight: 600,
           },
           '&.Mui-completed': {
-            color: neumorphColors.accentSecondary,
+            color: colors.success,
           },
         },
       },
@@ -448,12 +472,12 @@ const theme = createTheme({
     MuiStepIcon: {
       styleOverrides: {
         root: {
-          color: neumorphColors.muted,
+          color: colors.border,
           '&.Mui-active': {
-            color: neumorphColors.accent,
+            color: colors.primary,
           },
           '&.Mui-completed': {
-            color: neumorphColors.accentSecondary,
+            color: colors.success,
           },
         },
       },
@@ -462,7 +486,7 @@ const theme = createTheme({
     MuiSelect: {
       styleOverrides: {
         root: {
-          borderRadius: 16,
+          borderRadius: 10,
         },
       },
     },
@@ -471,14 +495,44 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           '& .MuiOutlinedInput-root': {
-            background: neumorphColors.background,
-            borderRadius: 16,
-            boxShadow: neumorphShadows.inset,
+            background: colors.background,
+            borderRadius: 10,
             '& fieldset': {
-              border: 'none',
+              borderColor: colors.border,
             },
             '&.Mui-focused fieldset': {
-              border: `2px solid ${neumorphColors.accent}`,
+              borderColor: colors.primary,
+            },
+          },
+        },
+      },
+    },
+
+    MuiDivider: {
+      styleOverrides: {
+        root: {
+          borderColor: colors.border,
+        },
+      },
+    },
+
+    MuiTooltip: {
+      styleOverrides: {
+        tooltip: {
+          background: colors.textPrimary,
+          borderRadius: 8,
+          fontSize: '0.8rem',
+        },
+      },
+    },
+
+    MuiSwitch: {
+      styleOverrides: {
+        root: {
+          '& .MuiSwitch-switchBase.Mui-checked': {
+            color: colors.primary,
+            '& + .MuiSwitch-track': {
+              backgroundColor: colors.primaryLight,
             },
           },
         },
@@ -487,5 +541,11 @@ const theme = createTheme({
   },
 });
 
-export { neumorphColors };
+// Export colors for use in components
+export { colors };
+
+// Legacy export for backwards compatibility
+export const neumorphColors = colors;
+export const neumorphShadows = shadows;
+
 export default theme;

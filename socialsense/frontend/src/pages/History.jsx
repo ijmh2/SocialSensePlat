@@ -15,30 +15,37 @@ import {
   TableRow,
   TablePagination,
   IconButton,
-  useTheme,
-  alpha,
   CircularProgress,
-  TextField,
-  InputAdornment,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
+  Tooltip,
 } from '@mui/material';
 import {
   Visibility,
   Download,
-  Search,
   YouTube,
-  MusicNote,
   VideoLibrary,
+  Refresh,
 } from '@mui/icons-material';
+import TikTokIcon from '../components/icons/TikTokIcon';
 import toast from 'react-hot-toast';
 
 import { analysisApi } from '../utils/api';
+import { colors, shadows } from '../styles/theme';
+
+/**
+ * Get score color based on value
+ */
+const getScoreColor = (score) => {
+  if (score >= 75) return colors.success;
+  if (score >= 60) return colors.primary;
+  if (score >= 40) return colors.warning;
+  return colors.error;
+};
 
 const History = () => {
-  const theme = useTheme();
   const navigate = useNavigate();
 
   const [analyses, setAnalyses] = useState([]);
@@ -47,10 +54,11 @@ const History = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [statusFilter, setStatusFilter] = useState('');
+  const [myVideosOnly, setMyVideosOnly] = useState(false);
 
   useEffect(() => {
     loadAnalyses();
-  }, [page, rowsPerPage, statusFilter]);
+  }, [page, rowsPerPage, statusFilter, myVideosOnly]);
 
   const loadAnalyses = async () => {
     try {
@@ -61,6 +69,9 @@ const History = () => {
       };
       if (statusFilter) {
         params.status = statusFilter;
+      }
+      if (myVideosOnly) {
+        params.my_videos = true;
       }
 
       const { data } = await analysisApi.getHistory(params);
@@ -95,22 +106,22 @@ const History = () => {
       case 'youtube':
         return <YouTube sx={{ fontSize: 20, color: '#FF0000' }} />;
       case 'tiktok':
-        return <MusicNote sx={{ fontSize: 20, color: '#00F2EA' }} />;
+        return <TikTokIcon sx={{ fontSize: 20, color: '#000000' }} />;
       default:
-        return <VideoLibrary sx={{ fontSize: 20 }} />;
+        return <VideoLibrary sx={{ fontSize: 20, color: colors.textMuted }} />;
     }
   };
 
-  const getStatusColor = (status) => {
+  const getStatusStyles = (status) => {
     switch (status) {
       case 'completed':
-        return theme.palette.success.main;
+        return { bg: '#F0FDF4', color: colors.success };
       case 'processing':
-        return theme.palette.warning.main;
+        return { bg: '#FFFBEB', color: colors.warning };
       case 'failed':
-        return theme.palette.error.main;
+        return { bg: '#FEF2F2', color: colors.error };
       default:
-        return theme.palette.text.secondary;
+        return { bg: colors.surface, color: colors.textSecondary };
     }
   };
 
@@ -131,7 +142,6 @@ const History = () => {
     if (!dateString) return 'N/A';
     try {
       const date = new Date(dateString);
-      // Check if date is valid
       if (isNaN(date.getTime())) return 'N/A';
 
       return date.toLocaleDateString('en-US', {
@@ -147,58 +157,92 @@ const History = () => {
   };
 
   return (
-    <Box>
-      <Typography variant="h4" fontWeight={700} sx={{ mb: 1 }}>
+    <Box sx={{ maxWidth: 1400, mx: 'auto' }}>
+      <Typography variant="h4" fontWeight={700} sx={{ mb: 1, color: colors.textPrimary }}>
         Analysis History
       </Typography>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+      <Typography variant="body1" sx={{ mb: 4, color: colors.textSecondary }}>
         View and manage your past analyses
       </Typography>
 
       {/* Filters */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-          <FormControl size="small" sx={{ minWidth: 150 }}>
-            <InputLabel>Status</InputLabel>
-            <Select
-              value={statusFilter}
-              label="Status"
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
-                setPage(0);
-              }}
-            >
-              <MenuItem value="">All</MenuItem>
-              <MenuItem value="completed">Completed</MenuItem>
-              <MenuItem value="processing">Processing</MenuItem>
-              <MenuItem value="failed">Failed</MenuItem>
-            </Select>
-          </FormControl>
-
-          <Box sx={{ flex: 1 }} />
-
-          <Button
-            variant="outlined"
-            onClick={loadAnalyses}
-            disabled={loading}
+      <Box
+        sx={{
+          mb: 3,
+          p: 2,
+          background: colors.background,
+          border: `1px solid ${colors.border}`,
+          borderRadius: '12px',
+          display: 'flex',
+          gap: 2,
+          alignItems: 'center',
+          flexWrap: 'wrap',
+        }}
+      >
+        <FormControl size="small" sx={{ minWidth: 150 }}>
+          <InputLabel>Status</InputLabel>
+          <Select
+            value={statusFilter}
+            label="Status"
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPage(0);
+            }}
           >
-            Refresh
-          </Button>
-        </CardContent>
-      </Card>
+            <MenuItem value="">All</MenuItem>
+            <MenuItem value="completed">Completed</MenuItem>
+            <MenuItem value="processing">Processing</MenuItem>
+            <MenuItem value="failed">Failed</MenuItem>
+          </Select>
+        </FormControl>
+
+        <FormControl size="small" sx={{ minWidth: 150 }}>
+          <InputLabel>Videos</InputLabel>
+          <Select
+            value={myVideosOnly ? 'my' : 'all'}
+            label="Videos"
+            onChange={(e) => {
+              setMyVideosOnly(e.target.value === 'my');
+              setPage(0);
+            }}
+          >
+            <MenuItem value="all">All Videos</MenuItem>
+            <MenuItem value="my">My Videos Only</MenuItem>
+          </Select>
+        </FormControl>
+
+        <Box sx={{ flex: 1 }} />
+
+        <Button
+          variant="outlined"
+          startIcon={<Refresh />}
+          onClick={loadAnalyses}
+          disabled={loading}
+        >
+          Refresh
+        </Button>
+      </Box>
 
       {/* Table */}
-      <Card>
+      <Box
+        sx={{
+          background: colors.background,
+          border: `1px solid ${colors.border}`,
+          borderRadius: '16px',
+          overflow: 'hidden',
+          boxShadow: shadows.card,
+        }}
+      >
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 6 }}>
             <CircularProgress />
           </Box>
         ) : analyses.length === 0 ? (
-          <CardContent sx={{ textAlign: 'center', py: 6 }}>
-            <Typography variant="h6" color="text.secondary" sx={{ mb: 2 }}>
+          <Box sx={{ textAlign: 'center', py: 6, px: 3 }}>
+            <Typography variant="h6" sx={{ mb: 2, color: colors.textSecondary }}>
               No analyses found
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            <Typography variant="body2" sx={{ mb: 3, color: colors.textMuted }}>
               Start by analyzing a video to see your history here
             </Typography>
             <Button
@@ -207,7 +251,7 @@ const History = () => {
             >
               Start Analysis
             </Button>
-          </CardContent>
+          </Box>
         ) : (
           <>
             <TableContainer>
@@ -220,86 +264,138 @@ const History = () => {
                     <TableCell align="center">Comments</TableCell>
                     <TableCell align="center">Tokens</TableCell>
                     <TableCell align="center">Status</TableCell>
+                    <TableCell align="center">Score</TableCell>
                     <TableCell>Date</TableCell>
                     <TableCell align="right">Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {analyses.map((analysis) => (
-                    <TableRow
-                      key={analysis.id}
-                      hover
-                      sx={{ cursor: 'pointer' }}
-                      onClick={() => navigate(`/analysis/${analysis.id}`)}
-                    >
-                      <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          {getPlatformIcon(analysis.platform)}
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight={500} noWrap sx={{ maxWidth: 200 }}>
-                          {analysis.video_title || 'Untitled'}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" color="text.secondary">
-                          {getAnalysisTypeLabel(analysis.analysis_type)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Typography variant="body2">
-                          {analysis.comment_count?.toLocaleString() || '-'}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Typography variant="body2">
-                          {analysis.tokens_used}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Chip
-                          label={analysis.status}
-                          size="small"
-                          sx={{
-                            background: alpha(getStatusColor(analysis.status), 0.15),
-                            color: getStatusColor(analysis.status),
-                            fontWeight: 600,
-                            textTransform: 'capitalize',
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" color="text.secondary">
-                          {formatDate(analysis.created_at)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                          <IconButton
+                  {analyses.map((analysis) => {
+                    const statusStyles = getStatusStyles(analysis.status);
+                    return (
+                      <TableRow
+                        key={analysis.id}
+                        hover
+                        sx={{
+                          cursor: 'pointer',
+                          '&:hover': { background: colors.surface },
+                        }}
+                        onClick={() => navigate(`/analysis/${analysis.id}`)}
+                      >
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {getPlatformIcon(analysis.platform)}
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" fontWeight={500} noWrap sx={{ maxWidth: 200, color: colors.textPrimary }}>
+                            {analysis.video_title || 'Untitled'}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" sx={{ color: colors.textSecondary }}>
+                            {getAnalysisTypeLabel(analysis.analysis_type)}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="center">
+                          <Typography variant="body2" className="font-mono" sx={{ color: colors.textPrimary }}>
+                            {analysis.comment_count?.toLocaleString() || '-'}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="center">
+                          <Typography variant="body2" className="font-mono" sx={{ color: colors.textPrimary }}>
+                            {analysis.tokens_used}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="center">
+                          <Chip
+                            label={analysis.status}
                             size="small"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/analysis/${analysis.id}`);
+                            sx={{
+                              background: statusStyles.bg,
+                              color: statusStyles.color,
+                              fontWeight: 600,
+                              textTransform: 'capitalize',
+                              border: 'none',
                             }}
-                          >
-                            <Visibility fontSize="small" />
-                          </IconButton>
-                          {analysis.status === 'completed' && analysis.analysis_type !== 'video_analysis' && (
+                          />
+                        </TableCell>
+                        <TableCell align="center">
+                          {analysis.is_my_video && analysis.video_score != null ? (
+                            <Tooltip
+                              title={analysis.priority_improvement || 'Video score'}
+                              arrow
+                              placement="top"
+                            >
+                              <Box
+                                sx={{
+                                  display: 'inline-flex',
+                                  px: 1.5,
+                                  py: 0.5,
+                                  borderRadius: '8px',
+                                  background: `${getScoreColor(analysis.video_score)}15`,
+                                  border: `1px solid ${getScoreColor(analysis.video_score)}40`,
+                                }}
+                              >
+                                <Typography
+                                  variant="body2"
+                                  className="font-mono"
+                                  sx={{
+                                    fontSize: '0.85rem',
+                                    fontWeight: 600,
+                                    color: getScoreColor(analysis.video_score),
+                                  }}
+                                >
+                                  {analysis.video_score}
+                                </Typography>
+                              </Box>
+                            </Tooltip>
+                          ) : (
+                            <Typography variant="body2" sx={{ color: colors.textMuted }}>
+                              —
+                            </Typography>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" sx={{ color: colors.textMuted }}>
+                            {formatDate(analysis.created_at)}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="right">
+                          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
                             <IconButton
                               size="small"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleExport(analysis.id);
+                                navigate(`/analysis/${analysis.id}`);
+                              }}
+                              sx={{
+                                color: colors.primary,
+                                '&:hover': { background: colors.primaryGlow },
                               }}
                             >
-                              <Download fontSize="small" />
+                              <Visibility fontSize="small" />
                             </IconButton>
-                          )}
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                            {analysis.status === 'completed' && analysis.analysis_type !== 'video_analysis' && (
+                              <IconButton
+                                size="small"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleExport(analysis.id);
+                                }}
+                                sx={{
+                                  color: colors.textSecondary,
+                                  '&:hover': { background: colors.surface },
+                                }}
+                              >
+                                <Download fontSize="small" />
+                              </IconButton>
+                            )}
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </TableContainer>
@@ -314,10 +410,14 @@ const History = () => {
                 setPage(0);
               }}
               rowsPerPageOptions={[5, 10, 25, 50]}
+              sx={{
+                borderTop: `1px solid ${colors.border}`,
+                '.MuiTablePagination-select': { color: colors.textPrimary },
+              }}
             />
           </>
         )}
-      </Card>
+      </Box>
     </Box>
   );
 };

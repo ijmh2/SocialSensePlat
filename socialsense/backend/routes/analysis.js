@@ -175,7 +175,12 @@ router.post('/comments', authenticate, uploadFields, async (req, res) => {
       include_marketing = false,
       product_description,
       request_id,
+      is_my_video = false,
+      creator_notes = '',
     } = req.body;
+
+    // Convert string booleans to actual booleans
+    const isMyVideo = is_my_video === 'true' || is_my_video === true;
 
     if (!url || !platform) {
       return res.status(400).json({ error: 'URL and platform are required' });
@@ -261,6 +266,8 @@ router.post('/comments', authenticate, uploadFields, async (req, res) => {
         tokens_used: tokenCost,
         status: 'processing',
         has_video: !!videoFile,
+        is_my_video: isMyVideo,
+        creator_notes: creator_notes || null,
       })
       .select()
       .single();
@@ -283,7 +290,9 @@ router.post('/comments', authenticate, uploadFields, async (req, res) => {
       productImagePath: productImageFile?.path,
       videoFilePath: videoFile?.path,
       request_id,
-      startTime: Date.now()
+      startTime: Date.now(),
+      isMyVideo,
+      creatorNotes: creator_notes || null,
     }).catch(err => console.error('Background Job Failed:', err));
 
     // 6. Return Immediately
@@ -306,17 +315,21 @@ router.post('/comments', authenticate, uploadFields, async (req, res) => {
  */
 router.get('/history', authenticate, async (req, res) => {
   try {
-    const { limit = 20, offset = 0, status } = req.query;
+    const { limit = 20, offset = 0, status, my_videos } = req.query;
 
     let query = supabaseAdmin
       .from('analyses')
-      .select('id, platform, video_title, analysis_type, comment_count, tokens_used, status, created_at', { count: 'exact' })
+      .select('id, platform, video_title, analysis_type, comment_count, tokens_used, status, created_at, is_my_video, video_score, priority_improvement', { count: 'exact' })
       .eq('user_id', req.user.id)
       .order('created_at', { ascending: false })
       .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
 
     if (status) {
       query = query.eq('status', status);
+    }
+
+    if (my_videos === 'true') {
+      query = query.eq('is_my_video', true);
     }
 
     const { data: analyses, error, count } = await query;
@@ -329,6 +342,43 @@ router.get('/history', authenticate, async (req, res) => {
   } catch (error) {
     console.error('History error:', error);
     res.status(500).json({ error: 'Failed to fetch history' });
+  }
+});
+
+/**
+ * GET /api/analysis/account-score
+ * Get the user's account score (average of all "my video" scores)
+ */
+router.get('/account-score', authenticate, async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('analyses')
+      .select('video_score')
+      .eq('user_id', req.user.id)
+      .eq('is_my_video', true)
+      .eq('status', 'completed')
+      .not('video_score', 'is', null);
+
+    if (error) {
+      console.error('Account score error:', error);
+      return res.status(500).json({ error: 'Failed to calculate account score' });
+    }
+
+    const scores = data?.map(a => a.video_score) || [];
+    const avgScore = scores.length > 0
+      ? scores.reduce((a, b) => a + b, 0) / scores.length
+      : null;
+
+    res.json({
+      score: avgScore ? Math.round(avgScore * 10) / 10 : null,
+      videoCount: scores.length,
+      hasScore: scores.length > 0,
+      minScore: scores.length > 0 ? Math.min(...scores) : null,
+      maxScore: scores.length > 0 ? Math.max(...scores) : null,
+    });
+  } catch (error) {
+    console.error('Account score error:', error);
+    res.status(500).json({ error: 'Failed to calculate account score' });
   }
 });
 
@@ -518,7 +568,8 @@ async function extractAudio(videoPath) {
 // Background Worker Function (Unified: comments + optional video)
 async function processAnalysisJob({
   analysisId, videoId, platform, commentsToFetch,
-  includeText, includeMkt, product_description, productImagePath, videoFilePath, request_id, startTime
+  includeText, includeMkt, product_description, productImagePath, videoFilePath, request_id, startTime,
+  isMyVideo = false, creatorNotes = null
 }) {
   try {
     // 1. Scrape Comments
@@ -614,7 +665,7 @@ async function processAnalysisJob({
       if (request_id) progressMap.set(request_id, { stage: 'analyzing_ai', count: rawComments.length, percent: 88 });
 
       try {
-        analysisResult = await analyzeComments(processedComments, platform, marketingContext, videoTranscript, videoFrames);
+        analysisResult = await analyzeComments(processedComments, platform, marketingContext, videoTranscript, videoFrames, isMyVideo, creatorNotes);
       } catch (aiErr) {
         console.error('AI Error:', aiErr);
         const fallback = extractThemesAndKeywords(processedComments.map(c => c.clean_text));
@@ -643,6 +694,9 @@ async function processAnalysisJob({
       themes: analysisResult.themes,
       video_transcript: videoTranscript || null,
       processing_time_ms: processingTime,
+      video_score: analysisResult.videoScore || null,
+      priority_improvement: analysisResult.priorityImprovement || null,
+      notes_assessment: analysisResult.notesAssessment || null,
     }).eq('id', analysisId);
 
     if (finalMetaError) {

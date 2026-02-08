@@ -21,7 +21,6 @@ import {
 } from '@mui/material';
 import {
   YouTube,
-  MusicNote,
   Search,
   Token,
   Upload,
@@ -38,7 +37,8 @@ import toast from 'react-hot-toast';
 
 import { useAuth } from '../contexts/AuthContext';
 import { analysisApi } from '../utils/api';
-import { neumorphShadows } from '../styles/theme';
+import { colors, shadows } from '../styles/theme';
+import TikTokIcon from '../components/icons/TikTokIcon';
 
 const MotionBox = motion(Box);
 
@@ -58,6 +58,8 @@ const CommentAnalysis = () => {
   const [productDescription, setProductDescription] = useState('');
   const [productImage, setProductImage] = useState(null);
   const [videoFile, setVideoFile] = useState(null);
+  const [isMyVideo, setIsMyVideo] = useState(false);
+  const [creatorNotes, setCreatorNotes] = useState('');
 
   const [estimating, setEstimating] = useState(false);
   const [estimate, setEstimate] = useState(null);
@@ -207,6 +209,12 @@ const CommentAnalysis = () => {
         formData.append('video', videoFile);
       }
 
+      // Account score fields
+      formData.append('is_my_video', isMyVideo);
+      if (isMyVideo && creatorNotes.trim()) {
+        formData.append('creator_notes', creatorNotes.trim());
+      }
+
       const { data } = await analysisApi.analyzeComments(formData);
 
       await refreshTokenBalance();
@@ -296,7 +304,7 @@ const CommentAnalysis = () => {
       case 0:
         return (
           <MotionBox initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-            <Typography variant="h6" fontWeight={700} sx={{ mb: 3, color: '#3D4852' }}>
+            <Typography variant="h6" fontWeight={700} sx={{ mb: 3, color: colors.textPrimary }}>
               Select Platform & Enter URL
             </Typography>
 
@@ -308,8 +316,8 @@ const CommentAnalysis = () => {
                   flex: 1,
                   cursor: 'pointer',
                   borderRadius: '20px',
-                  boxShadow: platform === 'youtube' ? neumorphShadows.inset : neumorphShadows.extruded,
-                  background: '#E0E5EC',
+                  boxShadow: platform === 'youtube' ? shadows.sm : shadows.card,
+                  background: colors.background,
                   border: platform === 'youtube' ? '2px solid #FF0000' : 'none',
                   transition: 'all 300ms ease-out',
                 }}
@@ -323,7 +331,7 @@ const CommentAnalysis = () => {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      boxShadow: platform === 'youtube' ? neumorphShadows.extrudedSmall : neumorphShadows.insetDeep,
+                      boxShadow: platform === 'youtube' ? shadows.sm : shadows.md,
                       background: platform === 'youtube' ? '#FF0000' : '#E0E5EC',
                       mx: 'auto',
                       mb: 2,
@@ -331,8 +339,8 @@ const CommentAnalysis = () => {
                   >
                     <YouTube sx={{ fontSize: 32, color: platform === 'youtube' ? 'white' : '#FF0000' }} />
                   </Box>
-                  <Typography variant="h6" fontWeight={600} sx={{ color: '#3D4852' }}>YouTube</Typography>
-                  <Typography variant="caption" sx={{ color: '#6B7280' }}>
+                  <Typography variant="h6" fontWeight={600} sx={{ color: colors.textPrimary }}>YouTube</Typography>
+                  <Typography variant="caption" sx={{ color: colors.textSecondary }}>
                     1 token per 1,000 comments
                   </Typography>
                 </CardContent>
@@ -345,9 +353,9 @@ const CommentAnalysis = () => {
                   flex: 1,
                   cursor: 'pointer',
                   borderRadius: '20px',
-                  boxShadow: platform === 'tiktok' ? neumorphShadows.inset : neumorphShadows.extruded,
-                  background: '#E0E5EC',
-                  border: platform === 'tiktok' ? '2px solid #00F2EA' : 'none',
+                  boxShadow: platform === 'tiktok' ? shadows.sm : shadows.card,
+                  background: colors.background,
+                  border: platform === 'tiktok' ? '2px solid #000000' : 'none',
                   transition: 'all 300ms ease-out',
                 }}
               >
@@ -360,23 +368,23 @@ const CommentAnalysis = () => {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      boxShadow: platform === 'tiktok' ? neumorphShadows.extrudedSmall : neumorphShadows.insetDeep,
-                      background: platform === 'tiktok' ? '#00F2EA' : '#E0E5EC',
+                      boxShadow: platform === 'tiktok' ? shadows.sm : shadows.md,
+                      background: platform === 'tiktok' ? '#000000' : '#E0E5EC',
                       mx: 'auto',
                       mb: 2,
                     }}
                   >
-                    <MusicNote sx={{ fontSize: 32, color: platform === 'tiktok' ? 'white' : '#00F2EA' }} />
+                    <TikTokIcon sx={{ fontSize: 32, color: platform === 'tiktok' ? 'white' : '#000000' }} />
                   </Box>
-                  <Typography variant="h6" fontWeight={600} sx={{ color: '#3D4852' }}>TikTok</Typography>
-                  <Typography variant="caption" sx={{ color: '#6B7280' }}>
+                  <Typography variant="h6" fontWeight={600} sx={{ color: colors.textPrimary }}>TikTok</Typography>
+                  <Typography variant="caption" sx={{ color: colors.textSecondary }}>
                     1 token per 100 comments
                   </Typography>
                 </CardContent>
               </Card>
             </Box>
 
-            <Alert severity="info" sx={{ mb: 3, borderRadius: '16px', boxShadow: neumorphShadows.extrudedSmall }}>
+            <Alert severity="info" sx={{ mb: 3, borderRadius: '16px', boxShadow: shadows.sm }}>
               {platform === 'youtube' ? (
                 <>
                   <strong>YouTube URL formats:</strong><br />
@@ -404,24 +412,24 @@ const CommentAnalysis = () => {
             />
 
             {/* Optional Video Upload */}
-            <Card sx={{ mb: 3, borderRadius: '16px', boxShadow: neumorphShadows.inset, background: '#E0E5EC' }}>
+            <Card sx={{ mb: 3, borderRadius: '16px', boxShadow: shadows.sm, background: colors.background }}>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                  <VideoFile sx={{ color: '#6C63FF' }} />
-                  <Typography variant="body1" fontWeight={600} sx={{ color: '#3D4852' }}>
+                  <VideoFile sx={{ color: colors.primary }} />
+                  <Typography variant="body1" fontWeight={600} sx={{ color: colors.textPrimary }}>
                     Enhance with Video Upload (+20 tokens)
                   </Typography>
                 </Box>
-                <Typography variant="body2" sx={{ color: '#6B7280', mb: 2 }}>
+                <Typography variant="body2" sx={{ color: colors.textSecondary, mb: 2 }}>
                   Upload your video file to include audio transcription and visual analysis in the AI insights.
                 </Typography>
                 {videoFile ? (
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, borderRadius: '12px', boxShadow: neumorphShadows.extrudedSmall, background: '#E0E5EC' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, borderRadius: '12px', boxShadow: shadows.sm, background: colors.background }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <CheckCircle sx={{ color: '#38B2AC' }} />
+                      <CheckCircle sx={{ color: colors.success }} />
                       <Box>
-                        <Typography variant="body2" fontWeight={600} sx={{ color: '#3D4852' }}>{videoFile.name}</Typography>
-                        <Typography variant="caption" sx={{ color: '#6B7280' }}>{(videoFile.size / (1024 * 1024)).toFixed(1)} MB</Typography>
+                        <Typography variant="body2" fontWeight={600} sx={{ color: colors.textPrimary }}>{videoFile.name}</Typography>
+                        <Typography variant="caption" sx={{ color: colors.textSecondary }}>{(videoFile.size / (1024 * 1024)).toFixed(1)} MB</Typography>
                       </Box>
                     </Box>
                     <Button size="small" color="error" onClick={() => setVideoFile(null)} startIcon={<Delete />}>
@@ -452,8 +460,8 @@ const CommentAnalysis = () => {
               sx={{
                 borderRadius: '16px',
                 py: 1.5,
-                boxShadow: neumorphShadows.extrudedSmall,
-                background: 'linear-gradient(135deg, #6C63FF 0%, #8B84FF 100%)',
+                boxShadow: shadows.sm,
+                background: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)',
               }}
             >
               Continue
@@ -464,7 +472,7 @@ const CommentAnalysis = () => {
       case 1:
         return (
           <MotionBox initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-            <Typography variant="h6" fontWeight={700} sx={{ mb: 3, color: '#3D4852' }}>
+            <Typography variant="h6" fontWeight={700} sx={{ mb: 3, color: colors.textPrimary }}>
               Configure Analysis Options
             </Typography>
 
@@ -484,8 +492,8 @@ const CommentAnalysis = () => {
                 control={<Checkbox checked={includeTextAnalysis} onChange={(e) => setIncludeTextAnalysis(e.target.checked)} />}
                 label={
                   <Box>
-                    <Typography variant="body1" sx={{ color: '#3D4852' }}>AI Text Analysis</Typography>
-                    <Typography variant="caption" sx={{ color: '#6B7280' }}>
+                    <Typography variant="body1" sx={{ color: colors.textPrimary }}>AI Text Analysis</Typography>
+                    <Typography variant="caption" sx={{ color: colors.textSecondary }}>
                       Get actionable insights and recommendations (+5 tokens)
                     </Typography>
                   </Box>
@@ -499,8 +507,8 @@ const CommentAnalysis = () => {
                 control={<Checkbox checked={includeMarketing} onChange={(e) => setIncludeMarketing(e.target.checked)} />}
                 label={
                   <Box>
-                    <Typography variant="body1" sx={{ color: '#3D4852' }}>Marketing Analysis</Typography>
-                    <Typography variant="caption" sx={{ color: '#6B7280' }}>
+                    <Typography variant="body1" sx={{ color: colors.textPrimary }}>Marketing Analysis</Typography>
+                    <Typography variant="caption" sx={{ color: colors.textSecondary }}>
                       Product positioning and creative recommendations (+5 tokens)
                     </Typography>
                   </Box>
@@ -510,8 +518,8 @@ const CommentAnalysis = () => {
             </Box>
 
             <Collapse in={includeMarketing}>
-              <Card sx={{ p: 2, mb: 3, borderRadius: '16px', boxShadow: neumorphShadows.inset, background: '#E0E5EC' }}>
-                <Typography variant="body2" fontWeight={600} sx={{ mb: 2, color: '#3D4852' }}>
+              <Card sx={{ p: 2, mb: 3, borderRadius: '16px', boxShadow: shadows.sm, background: colors.background }}>
+                <Typography variant="body2" fontWeight={600} sx={{ mb: 2, color: colors.textPrimary }}>
                   Product Information (Optional)
                 </Typography>
                 <TextField
@@ -531,6 +539,51 @@ const CommentAnalysis = () => {
               </Card>
             </Collapse>
 
+            <Divider sx={{ my: 3 }} />
+
+            {/* Account Score Section */}
+            <Box sx={{ mb: 2 }}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={isMyVideo}
+                    onChange={(e) => setIsMyVideo(e.target.checked)}
+                    sx={{ color: colors.primary }}
+                  />
+                }
+                label={
+                  <Box>
+                    <Typography variant="body1" fontWeight={600} sx={{ color: colors.textPrimary }}>
+                      This is my video
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: colors.textSecondary }}>
+                      Enable scoring mode — get a 0-100 score that contributes to your Account Score
+                    </Typography>
+                  </Box>
+                }
+                sx={{ display: 'flex', alignItems: 'flex-start' }}
+              />
+            </Box>
+
+            <Collapse in={isMyVideo}>
+              <Card sx={{ p: 2, mb: 3, borderRadius: '16px', boxShadow: shadows.sm, background: colors.surface, border: `1px solid ${colors.border}` }}>
+                <Typography variant="body2" fontWeight={600} sx={{ mb: 1, color: colors.textPrimary }}>
+                  What do you think went well? (Optional)
+                </Typography>
+                <Typography variant="caption" sx={{ color: colors.textSecondary, display: 'block', mb: 2 }}>
+                  Write your self-assessment before seeing results. The AI will compare your beliefs against actual audience reactions.
+                </Typography>
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={3}
+                  placeholder="e.g., I think the hook worked well, the call-to-action was clear..."
+                  value={creatorNotes}
+                  onChange={(e) => setCreatorNotes(e.target.value)}
+                />
+              </Card>
+            </Collapse>
+
             {videoFile && (
               <Alert severity="success" sx={{ mb: 3, borderRadius: '16px' }} icon={<VideoFile />}>
                 <strong>Video attached:</strong> {videoFile.name} ({(videoFile.size / (1024 * 1024)).toFixed(1)} MB) — frames and audio will be analyzed
@@ -543,7 +596,7 @@ const CommentAnalysis = () => {
                 size="large"
                 onClick={() => setActiveStep(0)}
                 startIcon={<ArrowBack />}
-                sx={{ borderRadius: '16px', boxShadow: neumorphShadows.extrudedSmall, background: '#E0E5EC', border: 'none' }}
+                sx={{ borderRadius: '16px', boxShadow: shadows.sm, background: colors.background, border: 'none' }}
               >
                 Back
               </Button>
@@ -554,7 +607,7 @@ const CommentAnalysis = () => {
                 onClick={handleEstimate}
                 disabled={estimating}
                 endIcon={estimating ? <CircularProgress size={20} color="inherit" /> : <Search />}
-                sx={{ borderRadius: '16px', boxShadow: neumorphShadows.extrudedSmall, background: 'linear-gradient(135deg, #6C63FF 0%, #8B84FF 100%)' }}
+                sx={{ borderRadius: '16px', boxShadow: shadows.sm, background: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)' }}
               >
                 {estimating ? 'Checking...' : 'Check & Estimate Cost'}
               </Button>
@@ -563,7 +616,7 @@ const CommentAnalysis = () => {
             {estimating && progressStage && (
               <Box sx={{ mt: 3 }}>
                 <LinearProgress sx={{ borderRadius: '8px' }} />
-                <Typography variant="caption" sx={{ color: '#6B7280', mt: 1, display: 'block' }}>
+                <Typography variant="caption" sx={{ color: colors.textSecondary, mt: 1, display: 'block' }}>
                   {progressStage}
                 </Typography>
               </Box>
@@ -574,69 +627,69 @@ const CommentAnalysis = () => {
       case 2:
         return (
           <MotionBox initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-            <Typography variant="h6" fontWeight={700} sx={{ mb: 3, color: '#3D4852' }}>
+            <Typography variant="h6" fontWeight={700} sx={{ mb: 3, color: colors.textPrimary }}>
               Review & Confirm
             </Typography>
 
             {estimate && (
               <>
                 {/* Video Info */}
-                <Card sx={{ mb: 3, borderRadius: '20px', boxShadow: neumorphShadows.inset, background: '#E0E5EC' }}>
+                <Card sx={{ mb: 3, borderRadius: '20px', boxShadow: shadows.sm, background: colors.background }}>
                   <CardContent>
-                    <Typography variant="body2" sx={{ color: '#6B7280', mb: 1 }}>Video Details</Typography>
-                    <Typography variant="h6" fontWeight={600} sx={{ color: '#3D4852' }}>
+                    <Typography variant="body2" sx={{ color: colors.textSecondary, mb: 1 }}>Video Details</Typography>
+                    <Typography variant="h6" fontWeight={600} sx={{ color: colors.textPrimary }}>
                       {estimate.video?.title || 'Video'}
                     </Typography>
                     {estimate.video?.channel && (
-                      <Typography variant="body2" sx={{ color: '#6B7280' }}>{estimate.video.channel}</Typography>
+                      <Typography variant="body2" sx={{ color: colors.textSecondary }}>{estimate.video.channel}</Typography>
                     )}
                     <Box sx={{ display: 'flex', gap: 2, mt: 2, flexWrap: 'wrap' }}>
                       <Chip
                         label={`${estimate.comment_count?.toLocaleString() || 0} comments found`}
                         size="small"
-                        sx={{ boxShadow: neumorphShadows.extrudedSmall, background: '#E0E5EC', color: '#6C63FF', fontWeight: 600 }}
+                        sx={{ boxShadow: shadows.sm, background: colors.background, color: colors.primary, fontWeight: 600 }}
                       />
                       <Chip
                         label={`Analyzing up to ${Math.min(maxComments, estimate.comment_count || maxComments).toLocaleString()}`}
                         size="small"
-                        sx={{ boxShadow: neumorphShadows.extrudedSmall, background: '#E0E5EC', color: '#3D4852' }}
+                        sx={{ boxShadow: shadows.sm, background: colors.background, color: colors.textPrimary }}
                       />
                     </Box>
                   </CardContent>
                 </Card>
 
                 {/* Cost Breakdown */}
-                <Card sx={{ mb: 3, borderRadius: '20px', boxShadow: neumorphShadows.extruded, background: '#E0E5EC' }}>
+                <Card sx={{ mb: 3, borderRadius: '20px', boxShadow: shadows.card, background: colors.background }}>
                   <CardContent>
-                    <Typography variant="body2" sx={{ color: '#6B7280', mb: 2 }}>Cost Breakdown</Typography>
+                    <Typography variant="body2" sx={{ color: colors.textSecondary, mb: 2 }}>Cost Breakdown</Typography>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                      <Typography variant="body2" sx={{ color: '#3D4852' }}>Comment Scraping</Typography>
-                      <Typography variant="body2" sx={{ color: '#3D4852' }}>{estimate.breakdown?.scraping || 1} tokens</Typography>
+                      <Typography variant="body2" sx={{ color: colors.textPrimary }}>Comment Scraping</Typography>
+                      <Typography variant="body2" sx={{ color: colors.textPrimary }}>{estimate.breakdown?.scraping || 1} tokens</Typography>
                     </Box>
                     {estimate.breakdown?.text_analysis > 0 && (
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="body2" sx={{ color: '#3D4852' }}>AI Analysis</Typography>
-                        <Typography variant="body2" sx={{ color: '#3D4852' }}>{estimate.breakdown.text_analysis} tokens</Typography>
+                        <Typography variant="body2" sx={{ color: colors.textPrimary }}>AI Analysis</Typography>
+                        <Typography variant="body2" sx={{ color: colors.textPrimary }}>{estimate.breakdown.text_analysis} tokens</Typography>
                       </Box>
                     )}
                     {estimate.breakdown?.marketing > 0 && (
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="body2" sx={{ color: '#3D4852' }}>Marketing Insights</Typography>
-                        <Typography variant="body2" sx={{ color: '#3D4852' }}>{estimate.breakdown.marketing} tokens</Typography>
+                        <Typography variant="body2" sx={{ color: colors.textPrimary }}>Marketing Insights</Typography>
+                        <Typography variant="body2" sx={{ color: colors.textPrimary }}>{estimate.breakdown.marketing} tokens</Typography>
                       </Box>
                     )}
                     {estimate.breakdown?.video > 0 && (
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <VideoFile sx={{ fontSize: 16, color: '#6C63FF' }} />
-                          <Typography variant="body2" sx={{ color: '#3D4852' }}>Video Analysis</Typography>
+                          <VideoFile sx={{ fontSize: 16, color: colors.primary }} />
+                          <Typography variant="body2" sx={{ color: colors.textPrimary }}>Video Analysis</Typography>
                         </Box>
-                        <Typography variant="body2" sx={{ color: '#3D4852' }}>{estimate.breakdown.video} tokens</Typography>
+                        <Typography variant="body2" sx={{ color: colors.textPrimary }}>{estimate.breakdown.video} tokens</Typography>
                       </Box>
                     )}
                     <Divider sx={{ my: 2, opacity: 0.3 }} />
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Typography variant="h6" fontWeight={600} sx={{ color: '#3D4852' }}>Total</Typography>
+                      <Typography variant="h6" fontWeight={600} sx={{ color: colors.textPrimary }}>Total</Typography>
                       <Typography variant="h6" fontWeight={600} className="gradient-text">{estimate.token_cost} tokens</Typography>
                     </Box>
                   </CardContent>
@@ -657,16 +710,16 @@ const CommentAnalysis = () => {
                     alignItems: 'center',
                     p: 2,
                     borderRadius: '16px',
-                    boxShadow: estimate.can_afford ? neumorphShadows.extrudedSmall : neumorphShadows.inset,
-                    background: '#E0E5EC',
+                    boxShadow: estimate.can_afford ? shadows.sm : shadows.sm,
+                    background: colors.background,
                     mb: 3,
                   }}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <Token sx={{ color: estimate.can_afford ? '#38B2AC' : '#DD6B20' }} />
-                    <Typography variant="body2" sx={{ color: '#3D4852' }}>Your Balance</Typography>
+                    <Typography variant="body2" sx={{ color: colors.textPrimary }}>Your Balance</Typography>
                   </Box>
-                  <Typography variant="h6" fontWeight={600} sx={{ color: '#3D4852' }}>
+                  <Typography variant="h6" fontWeight={600} sx={{ color: colors.textPrimary }}>
                     {estimate.user_balance} tokens
                   </Typography>
                 </Box>
@@ -679,7 +732,7 @@ const CommentAnalysis = () => {
                     onClick={() => setActiveStep(1)}
                     startIcon={<ArrowBack />}
                     disabled={analyzing}
-                    sx={{ borderRadius: '16px', boxShadow: neumorphShadows.extrudedSmall, background: '#E0E5EC', border: 'none' }}
+                    sx={{ borderRadius: '16px', boxShadow: shadows.sm, background: colors.background, border: 'none' }}
                   >
                     Back
                   </Button>
@@ -702,7 +755,7 @@ const CommentAnalysis = () => {
                       onClick={handleAnalyze}
                       disabled={!estimate.can_afford}
                       endIcon={<Analytics />}
-                      sx={{ borderRadius: '16px', boxShadow: neumorphShadows.extrudedSmall, background: 'linear-gradient(135deg, #6C63FF 0%, #8B84FF 100%)' }}
+                      sx={{ borderRadius: '16px', boxShadow: shadows.sm, background: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)' }}
                     >
                       Start Analysis
                     </Button>
@@ -718,10 +771,10 @@ const CommentAnalysis = () => {
                       exit={{ opacity: 0, height: 0 }}
                       sx={{ mt: 3 }}
                     >
-                      <Card sx={{ borderRadius: '20px', boxShadow: neumorphShadows.inset, background: '#E0E5EC', p: 3 }}>
+                      <Card sx={{ borderRadius: '20px', boxShadow: shadows.sm, background: colors.background, p: 3 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
                           <CircularProgress size={24} />
-                          <Typography variant="body1" fontWeight={600} sx={{ color: '#3D4852' }}>
+                          <Typography variant="body1" fontWeight={600} sx={{ color: colors.textPrimary }}>
                             {progressStage}
                           </Typography>
                         </Box>
@@ -733,15 +786,15 @@ const CommentAnalysis = () => {
                         />
 
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Typography variant="body2" sx={{ color: '#6B7280' }}>
+                          <Typography variant="body2" sx={{ color: colors.textSecondary }}>
                             {commentsCollected.toLocaleString()} comments collected
                           </Typography>
-                          <Typography variant="body2" fontWeight={600} sx={{ color: '#6C63FF' }}>
+                          <Typography variant="body2" fontWeight={600} sx={{ color: colors.primary }}>
                             {progressPercent}%
                           </Typography>
                         </Box>
 
-                        <Typography variant="caption" sx={{ color: '#6B7280', display: 'block', mt: 2 }}>
+                        <Typography variant="caption" sx={{ color: colors.textSecondary, display: 'block', mt: 2 }}>
                           This may take 1-3 minutes depending on the number of comments
                         </Typography>
                       </Card>
@@ -760,17 +813,17 @@ const CommentAnalysis = () => {
 
   return (
     <Box>
-      <Typography variant="h4" fontWeight={800} sx={{ mb: 1, color: '#3D4852' }}>
+      <Typography variant="h4" fontWeight={800} sx={{ mb: 1, color: colors.textPrimary }}>
         Analysis
       </Typography>
-      <Typography variant="body1" sx={{ color: '#6B7280', mb: 4 }}>
+      <Typography variant="body1" sx={{ color: colors.textSecondary, mb: 4 }}>
         Extract insights from YouTube or TikTok comments, with optional video analysis
       </Typography>
 
       {error && (
         <Alert
           severity="error"
-          sx={{ mb: 3, borderRadius: '16px', boxShadow: neumorphShadows.extrudedSmall }}
+          sx={{ mb: 3, borderRadius: '16px', boxShadow: shadows.sm }}
           action={
             <Button color="inherit" size="small" onClick={handleReset} startIcon={<Refresh />}>
               Start Over
@@ -784,7 +837,7 @@ const CommentAnalysis = () => {
         </Alert>
       )}
 
-      <Card sx={{ borderRadius: '24px', boxShadow: neumorphShadows.extruded, background: '#E0E5EC' }}>
+      <Card sx={{ borderRadius: '24px', boxShadow: shadows.card, background: colors.background }}>
         <CardContent sx={{ p: 4 }}>
           <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
             {steps.map((label) => (

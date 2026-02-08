@@ -26,7 +26,6 @@ import {
   ArrowBack,
   Download,
   YouTube,
-  MusicNote,
   VideoLibrary,
   Comment,
   TrendingUp,
@@ -35,6 +34,11 @@ import {
   SentimentSatisfied,
   ExpandMore,
   ExpandLess,
+  Star,
+  EmojiEvents,
+  Warning,
+  TipsAndUpdates,
+  Psychology,
 } from '@mui/icons-material';
 import Collapse from '@mui/material/Collapse';
 import {
@@ -54,6 +58,7 @@ import toast from 'react-hot-toast';
 import ReactMarkdown from 'react-markdown';
 
 import { analysisApi } from '../utils/api';
+import TikTokIcon from '../components/icons/TikTokIcon';
 
 const MotionBox = motion(Box);
 
@@ -114,7 +119,7 @@ const AnalysisDetail = () => {
       case 'youtube':
         return <YouTube sx={{ fontSize: 24, color: '#FF0000' }} />;
       case 'tiktok':
-        return <MusicNote sx={{ fontSize: 24, color: '#00F2EA' }} />;
+        return <TikTokIcon sx={{ fontSize: 24, color: '#000000' }} />;
       default:
         return <VideoLibrary sx={{ fontSize: 24 }} />;
     }
@@ -131,6 +136,29 @@ const AnalysisDetail = () => {
       default:
         return theme.palette.text.secondary;
     }
+  };
+
+  const getScoreColor = (score) => {
+    if (score >= 75) return theme.palette.success.main;
+    if (score >= 60) return theme.palette.primary.main;
+    if (score >= 40) return theme.palette.warning.main;
+    return theme.palette.error.main;
+  };
+
+  const getScoreLabel = (score) => {
+    if (score >= 90) return 'Exceptional';
+    if (score >= 75) return 'Strong';
+    if (score >= 60) return 'Good';
+    if (score >= 40) return 'Needs Work';
+    if (score >= 20) return 'Poor';
+    return 'Critical';
+  };
+
+  const getScoreIcon = (score) => {
+    if (score >= 75) return <EmojiEvents sx={{ fontSize: 20, color: '#FFD700' }} />;
+    if (score >= 60) return <Star sx={{ fontSize: 20, color: theme.palette.primary.main }} />;
+    if (score >= 40) return <TrendingUp sx={{ fontSize: 20, color: theme.palette.warning.main }} />;
+    return <Warning sx={{ fontSize: 20, color: theme.palette.error.main }} />;
   };
 
   const COLORS = [
@@ -285,9 +313,25 @@ const AnalysisDetail = () => {
                 }}
               />
             )}
+            {analysis.is_my_video && analysis.video_score != null && (
+              <Chip
+                icon={getScoreIcon(analysis.video_score)}
+                label={`Score: ${analysis.video_score} - ${getScoreLabel(analysis.video_score)}`}
+                size="small"
+                sx={{
+                  background: alpha(getScoreColor(analysis.video_score), 0.15),
+                  color: getScoreColor(analysis.video_score),
+                  fontWeight: 600,
+                  '& .MuiChip-icon': {
+                    color: 'inherit',
+                  },
+                }}
+              />
+            )}
           </Box>
           <Typography variant="body2" color="text.secondary">
             {formatDate(analysis.created_at)} • {analysis.tokens_used} tokens used
+            {analysis.is_my_video && ' • My Video'}
           </Typography>
         </Box>
         {analysis.status === 'completed' && analysis.raw_comments?.length > 0 && (
@@ -320,6 +364,70 @@ const AnalysisDetail = () => {
           <Typography fontWeight={600}>Analysis Failed</Typography>
           <Typography>{analysis.error_message || 'An unexpected error occurred during analysis.'}</Typography>
         </Alert>
+      )}
+
+      {/* Priority Improvement Tip */}
+      {analysis.is_my_video && analysis.priority_improvement && (
+        <Card
+          sx={{
+            mb: 3,
+            background: alpha(theme.palette.warning.main, 0.05),
+            border: `1px solid ${alpha(theme.palette.warning.main, 0.3)}`,
+          }}
+        >
+          <CardContent sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+            <TipsAndUpdates sx={{ color: theme.palette.warning.main, mt: 0.5 }} />
+            <Box>
+              <Typography variant="subtitle1" fontWeight={600} color="warning.main" sx={{ mb: 0.5 }}>
+                Priority Improvement
+              </Typography>
+              <Typography variant="body1">
+                {analysis.priority_improvement}
+              </Typography>
+            </Box>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Creator Notes Reality Check */}
+      {analysis.is_my_video && analysis.creator_notes && (
+        <Card
+          sx={{
+            mb: 3,
+            background: alpha(theme.palette.info.main, 0.05),
+            border: `1px solid ${alpha(theme.palette.info.main, 0.3)}`,
+          }}
+        >
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 2 }}>
+              <Psychology sx={{ color: theme.palette.info.main, mt: 0.5 }} />
+              <Box>
+                <Typography variant="subtitle1" fontWeight={600} color="info.main" sx={{ mb: 0.5 }}>
+                  Your Pre-Analysis Notes
+                </Typography>
+                <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
+                  "{analysis.creator_notes}"
+                </Typography>
+              </Box>
+            </Box>
+            {analysis.notes_assessment && (
+              <Box
+                sx={{
+                  mt: 2,
+                  pt: 2,
+                  borderTop: `1px solid ${alpha(theme.palette.info.main, 0.2)}`,
+                }}
+              >
+                <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
+                  AI Reality Check
+                </Typography>
+                <Typography variant="body2">
+                  {analysis.notes_assessment}
+                </Typography>
+              </Box>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Stats Cards */}

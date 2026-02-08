@@ -92,6 +92,7 @@ export const analysisApi = {
     timeout: 60000, // 1 minute for export
   }),
   getProgress: (requestId) => api.get(`/analysis/progress/${requestId}`),
+  getAccountScore: () => api.get('/analysis/account-score'),
 };
 
 export default api;

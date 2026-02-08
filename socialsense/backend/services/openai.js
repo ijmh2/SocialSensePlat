@@ -39,10 +39,50 @@ export async function transcribeAudio(audioFilePath) {
 }
 
 /**
+ * Extract video score from AI response
+ */
+function extractVideoScore(summary) {
+  const patterns = [
+    /\*\*Overall Score:\s*(\d{1,3})\/100\*\*/i,
+    /Overall Score:\s*(\d{1,3})\/100/i,
+    /Score:\s*(\d{1,3})\/100/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = summary.match(pattern);
+    if (match) {
+      const score = parseInt(match[1], 10);
+      if (score >= 0 && score <= 100) {
+        return score;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Extract priority improvement from AI response
+ */
+function extractPriorityImprovement(summary) {
+  const match = summary.match(/\*\*Priority Improvement:\*\*\s*([^\n]+)/i);
+  return match ? match[1].trim() : null;
+}
+
+/**
+ * Extract notes assessment from AI response
+ */
+function extractNotesAssessment(summary) {
+  const match = summary.match(/## CREATOR SELF-ASSESSMENT CHECK[\s\S]*?((?:Accurate|Partially Accurate|Delusional)[^\n]*)/i);
+  return match ? match[1].trim() : null;
+}
+
+/**
  * Analyze comments and generate insights
  * Optionally includes video transcript and frames for unified analysis
+ * @param {boolean} isMyVideo - If true, enables harsh scoring mode
+ * @param {string} creatorNotes - Creator's self-assessment before seeing results
  */
-export async function analyzeComments(comments, platform, marketingContext = null, videoTranscript = null, videoFrames = null) {
+export async function analyzeComments(comments, platform, marketingContext = null, videoTranscript = null, videoFrames = null, isMyVideo = false, creatorNotes = null) {
   if (!comments || comments.length === 0) {
     return {
       summary: 'No comments available for analysis.',
@@ -93,8 +133,23 @@ export async function analyzeComments(comments, platform, marketingContext = nul
     .slice(0, 20)
     .map(c => c.clean_text);
 
-  // Build prompt
+  // Build prompt with harsh expert persona
+  const expertPreamble = `You are a brutally honest content strategy expert with 15+ years experience.
+You do NOT sugarcoat feedback. You do NOT agree with creators just to be nice.
+Your job is to deliver the truth that creators NEED to hear, not what they WANT to hear.
+
+CRITICAL RULES:
+- Never use phrases like "great job", "well done", or generic praise
+- Always identify problems and weaknesses first
+- Be specific with criticism - vague feedback is useless
+- If something is mediocre, say it's mediocre
+- Back every claim with evidence from comments
+- Assume the creator wants to improve, not be coddled
+
+`;
+
   const promptParts = [
+    expertPreamble,
     `You are analyzing ${platform} comments to identify what the creator should change or improve next.`,
     `\n**Dataset:** ${comments.length} total comments, ${analysisComments.length} after filtering, ${size} analyzed (${coveragePct.toFixed(0)}% coverage).`,
     `\n**Top Keywords:** ${keywords.slice(0, 10).map(k => k.word).join(', ')}`,
@@ -189,6 +244,56 @@ Based on the comments AND the product image provided:
 **Important:** Image insights are hypotheses only. Comment evidence takes precedence.`;
   }
 
+  // Add scoring section for "my video" analyses
+  if (isMyVideo) {
+    prompt += `
+
+---
+## VIDEO SCORE (0-100)
+
+Be brutally honest. Most content is mediocre (40-60). Reserve high scores for exceptional work.
+
+Score based on:
+- Audience Engagement Quality (40%): Substantive comments vs generic praise
+- Content-Audience Fit (30%): Does content resonate? Are viewers confused?
+- Conversion Signals (20%): Purchase intent, action-taking, value gained
+- Red Flags (-10%): Negative sentiment, complaints, clickbait backlash
+
+**Scoring Guidelines:**
+- 90-100: Exceptional - Viral potential, extremely high engagement
+- 75-89: Strong - Great audience connection, minor improvements
+- 60-74: Average - Solid content with clear improvement areas
+- 40-59: Below Average - Significant issues need addressing
+- 20-39: Poor - Major content or targeting problems
+- 0-19: Critical - Fundamental issues, needs complete rethink
+
+**Output at END of your analysis (REQUIRED FORMAT):**
+
+**Overall Score: [X]/100**
+
+**Priority Improvement:** [Single most impactful change to boost score]
+
+[2-3 sentence justification with specific comment evidence]`;
+  }
+
+  // Add notes reality check if creator provided notes
+  if (creatorNotes && creatorNotes.trim()) {
+    prompt += `
+
+---
+## CREATOR SELF-ASSESSMENT CHECK
+
+The creator believes: "${creatorNotes}"
+
+Compare their self-assessment against actual audience reactions:
+- Where is the creator RIGHT about what worked?
+- Where is the creator WRONG or deluding themselves?
+- What blind spots does the creator have?
+- Rate their self-awareness: Accurate / Partially Accurate / Delusional
+
+Be direct. If the creator is wrong, tell them clearly with evidence from the comments.`;
+  }
+
   // Build messages array — use multimodal content if we have images
   const hasImages = !!(videoFrames?.length > 0) || !!(marketingContext?.image_base64);
   const messages = [];
@@ -267,6 +372,11 @@ Based on the comments AND the product image provided:
       footer += `\n  - Video Enrichment: ${videoTranscript ? 'Transcript included' : 'No transcript'}${videoFrames ? `, ${videoFrames.length} frames analyzed` : ''}`;
     }
 
+    // Extract scoring data if this is a "my video" analysis
+    const videoScore = isMyVideo ? extractVideoScore(summary) : null;
+    const priorityImprovement = isMyVideo ? extractPriorityImprovement(summary) : null;
+    const notesAssessment = creatorNotes ? extractNotesAssessment(summary) : null;
+
     return {
       summary: summary + footer,
       keywords,
@@ -278,6 +388,9 @@ Based on the comments AND the product image provided:
         coverage: coveragePct,
         sampled: needsSampling,
       },
+      videoScore,
+      priorityImprovement,
+      notesAssessment,
     };
 
   } catch (aiError) {
@@ -294,6 +407,9 @@ Based on the comments AND the product image provided:
         coverage: coveragePct,
         sampled: needsSampling,
       },
+      videoScore: null,
+      priorityImprovement: null,
+      notesAssessment: null,
     };
   }
 }

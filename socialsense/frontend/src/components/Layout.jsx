@@ -25,7 +25,6 @@ import {
   Menu as MenuIcon,
   Dashboard as DashboardIcon,
   Comment as CommentIcon,
-  VideoLibrary as VideoIcon,
   History as HistoryIcon,
   Token as TokenIcon,
   Logout as LogoutIcon,
@@ -39,7 +38,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { useAuth } from '../contexts/AuthContext';
-import { neumorphShadows, neumorphColors } from '../styles/theme';
+import { colors, shadows, gradients } from '../styles/theme';
 
 const DRAWER_WIDTH = 260;
 const DRAWER_COLLAPSED_WIDTH = 80;
@@ -56,9 +55,9 @@ const Layout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  
+
   const { user, profile, tokenBalance, signOut } = useAuth();
-  
+
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
@@ -82,7 +81,7 @@ const Layout = ({ children }) => {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        background: '#E0E5EC',
+        background: colors.background,
         overflow: 'hidden',
       }}
     >
@@ -94,6 +93,7 @@ const Layout = ({ children }) => {
           alignItems: 'center',
           justifyContent: isCollapsed ? 'center' : 'space-between',
           minHeight: 80,
+          borderBottom: `1px solid ${colors.border}`,
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: isCollapsed ? 0 : 1.5 }}>
@@ -104,9 +104,9 @@ const Layout = ({ children }) => {
             sx={{
               width: 44,
               height: 44,
-              borderRadius: '14px',
-              background: 'linear-gradient(135deg, #6C63FF 0%, #8B84FF 100%)',
-              boxShadow: neumorphShadows.extrudedSmall,
+              borderRadius: '12px',
+              background: gradients.primary,
+              boxShadow: shadows.button,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -123,15 +123,15 @@ const Layout = ({ children }) => {
                 exit={{ opacity: 0, width: 0 }}
               >
                 <Box>
-                  <Typography 
-                    variant="h6" 
-                    fontWeight={700} 
+                  <Typography
+                    variant="h6"
+                    fontWeight={700}
                     noWrap
-                    sx={{ color: '#3D4852', fontFamily: '"Plus Jakarta Sans", sans-serif' }}
+                    sx={{ color: colors.textPrimary, fontFamily: '"Plus Jakarta Sans", sans-serif' }}
                   >
                     SocialSense
                   </Typography>
-                  <Typography variant="caption" sx={{ color: '#6B7280' }} noWrap>
+                  <Typography variant="caption" sx={{ color: colors.textMuted }} noWrap>
                     Platinum
                   </Typography>
                 </Box>
@@ -140,16 +140,15 @@ const Layout = ({ children }) => {
           </AnimatePresence>
         </Box>
         {!isMobile && !isCollapsed && (
-          <IconButton 
-            size="small" 
+          <IconButton
+            size="small"
             onClick={handleCollapse}
             sx={{
-              boxShadow: neumorphShadows.extrudedSmall,
-              background: '#E0E5EC',
-              '&:hover': { boxShadow: neumorphShadows.extruded },
+              border: `1px solid ${colors.border}`,
+              '&:hover': { background: colors.surface },
             }}
           >
-            <ChevronLeft fontSize="small" sx={{ color: '#6B7280' }} />
+            <ChevronLeft fontSize="small" sx={{ color: colors.textMuted }} />
           </IconButton>
         )}
       </Box>
@@ -161,16 +160,17 @@ const Layout = ({ children }) => {
             <Box
               sx={{
                 p: 1.5,
-                borderRadius: '14px',
-                boxShadow: neumorphShadows.inset,
-                background: '#E0E5EC',
+                borderRadius: '12px',
+                background: colors.primaryGlow,
                 textAlign: 'center',
                 cursor: 'pointer',
+                transition: 'all 200ms ease',
+                '&:hover': { background: `${colors.primary}15` },
               }}
               onClick={() => navigate('/tokens')}
             >
-              <TokenIcon sx={{ color: '#6C63FF', fontSize: 22 }} />
-              <Typography variant="caption" fontWeight={700} display="block" sx={{ color: '#3D4852', mt: 0.5 }}>
+              <TokenIcon sx={{ color: colors.primary, fontSize: 22 }} />
+              <Typography variant="caption" fontWeight={700} display="block" sx={{ color: colors.textPrimary, mt: 0.5 }}>
                 {tokenBalance}
               </Typography>
             </Box>
@@ -179,16 +179,16 @@ const Layout = ({ children }) => {
           <Box
             sx={{
               p: 2,
-              borderRadius: '16px',
-              boxShadow: neumorphShadows.inset,
-              background: '#E0E5EC',
+              borderRadius: '12px',
+              background: colors.surface,
+              border: `1px solid ${colors.border}`,
             }}
           >
-            <Typography variant="caption" sx={{ color: '#6B7280' }} display="block">
+            <Typography variant="caption" sx={{ color: colors.textMuted }} display="block">
               Token Balance
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-              <Typography variant="h4" fontWeight={700} className="gradient-text">
+              <Typography variant="h4" fontWeight={700} className="gradient-text font-mono">
                 {tokenBalance}
               </Typography>
               <Chip
@@ -197,9 +197,9 @@ const Layout = ({ children }) => {
                 sx={{
                   height: 20,
                   fontSize: '0.65rem',
-                  boxShadow: neumorphShadows.extrudedSmall,
-                  background: '#E0E5EC',
-                  color: '#6B7280',
+                  background: colors.background,
+                  border: `1px solid ${colors.border}`,
+                  color: colors.textMuted,
                 }}
               />
             </Box>
@@ -212,30 +212,29 @@ const Layout = ({ children }) => {
         {navItems.map((item, index) => {
           const isActive = location.pathname === item.path;
           const Icon = item.icon;
-          
+
           return (
-            <ListItem key={item.path} disablePadding sx={{ mb: 1 }}>
+            <ListItem key={item.path} disablePadding sx={{ mb: 0.5 }}>
               <Tooltip title={isCollapsed ? item.label : ''} placement="right">
                 <ListItemButton
                   component={motion.div}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
                   onClick={() => {
                     navigate(item.path);
                     if (isMobile) setMobileOpen(false);
                   }}
                   sx={{
-                    borderRadius: '14px',
+                    borderRadius: '10px',
                     py: 1.5,
                     px: isCollapsed ? 1.5 : 2,
                     justifyContent: isCollapsed ? 'center' : 'flex-start',
-                    boxShadow: isActive ? neumorphShadows.inset : 'none',
-                    background: '#E0E5EC',
+                    background: isActive ? colors.primaryGlow : 'transparent',
                     '&:hover': {
-                      boxShadow: isActive ? neumorphShadows.inset : neumorphShadows.extrudedSmall,
+                      background: isActive ? colors.primaryGlow : colors.surface,
                     },
                   }}
                 >
@@ -248,14 +247,14 @@ const Layout = ({ children }) => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        boxShadow: isActive ? neumorphShadows.extrudedSmall : neumorphShadows.insetSmall,
-                        background: isActive ? 'linear-gradient(135deg, #6C63FF 0%, #8B84FF 100%)' : '#E0E5EC',
+                        background: isActive ? gradients.primary : colors.surface,
+                        border: isActive ? 'none' : `1px solid ${colors.border}`,
                       }}
                     >
                       <Icon
                         sx={{
                           fontSize: 20,
-                          color: isActive ? 'white' : '#6B7280',
+                          color: isActive ? 'white' : colors.textMuted,
                         }}
                       />
                     </Box>
@@ -266,7 +265,7 @@ const Layout = ({ children }) => {
                       primaryTypographyProps={{
                         fontWeight: isActive ? 600 : 500,
                         fontSize: '0.9rem',
-                        color: isActive ? '#3D4852' : '#6B7280',
+                        color: isActive ? colors.primary : colors.textSecondary,
                       }}
                     />
                   )}
@@ -280,22 +279,21 @@ const Layout = ({ children }) => {
       {/* Collapse button for collapsed state */}
       {!isMobile && isCollapsed && (
         <Box sx={{ p: 2, textAlign: 'center' }}>
-          <IconButton 
-            size="small" 
+          <IconButton
+            size="small"
             onClick={handleCollapse}
             sx={{
-              boxShadow: neumorphShadows.extrudedSmall,
-              background: '#E0E5EC',
-              '&:hover': { boxShadow: neumorphShadows.extruded },
+              border: `1px solid ${colors.border}`,
+              '&:hover': { background: colors.surface },
             }}
           >
-            <ChevronRight fontSize="small" sx={{ color: '#6B7280' }} />
+            <ChevronRight fontSize="small" sx={{ color: colors.textMuted }} />
           </IconButton>
         </Box>
       )}
 
       {/* User info */}
-      <Box sx={{ p: isCollapsed ? 1.5 : 2 }}>
+      <Box sx={{ p: isCollapsed ? 1.5 : 2, borderTop: `1px solid ${colors.border}` }}>
         {isCollapsed ? (
           <Tooltip title={profile?.full_name || user?.email || 'User'} placement="right">
             <Avatar
@@ -304,8 +302,7 @@ const Layout = ({ children }) => {
                 height: 40,
                 mx: 'auto',
                 cursor: 'pointer',
-                boxShadow: neumorphShadows.extrudedSmall,
-                background: 'linear-gradient(135deg, #6C63FF 0%, #8B84FF 100%)',
+                background: gradients.primary,
                 fontSize: '1rem',
               }}
               onClick={handleMenuOpen}
@@ -317,13 +314,15 @@ const Layout = ({ children }) => {
           <Box
             sx={{
               p: 2,
-              borderRadius: '16px',
-              boxShadow: neumorphShadows.extrudedSmall,
-              background: '#E0E5EC',
+              borderRadius: '12px',
+              background: colors.surface,
+              border: `1px solid ${colors.border}`,
               display: 'flex',
               alignItems: 'center',
               gap: 1.5,
               cursor: 'pointer',
+              transition: 'all 200ms ease',
+              '&:hover': { boxShadow: shadows.card },
             }}
             onClick={handleMenuOpen}
           >
@@ -331,18 +330,17 @@ const Layout = ({ children }) => {
               sx={{
                 width: 40,
                 height: 40,
-                boxShadow: neumorphShadows.insetSmall,
-                background: 'linear-gradient(135deg, #6C63FF 0%, #8B84FF 100%)',
+                background: gradients.primary,
                 fontSize: '1rem',
               }}
             >
               {profile?.full_name?.[0] || user?.email?.[0]?.toUpperCase() || 'U'}
             </Avatar>
             <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography variant="body2" fontWeight={600} noWrap sx={{ color: '#3D4852' }}>
+              <Typography variant="body2" fontWeight={600} noWrap sx={{ color: colors.textPrimary }}>
                 {profile?.full_name || 'User'}
               </Typography>
-              <Typography variant="caption" noWrap display="block" sx={{ color: '#6B7280' }}>
+              <Typography variant="caption" noWrap display="block" sx={{ color: colors.textMuted }}>
                 {user?.email}
               </Typography>
             </Box>
@@ -353,52 +351,49 @@ const Layout = ({ children }) => {
   );
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', background: '#E0E5EC' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', background: colors.background }}>
       {/* Mobile AppBar */}
       <AppBar
         position="fixed"
         sx={{
           display: { md: 'none' },
-          background: '#E0E5EC',
-          boxShadow: neumorphShadows.extrudedSmall,
+          background: colors.background,
+          boxShadow: shadows.sm,
+          borderBottom: `1px solid ${colors.border}`,
         }}
         elevation={0}
       >
         <Toolbar>
-          <IconButton 
-            edge="start" 
+          <IconButton
+            edge="start"
             onClick={handleDrawerToggle}
             sx={{
-              boxShadow: neumorphShadows.extrudedSmall,
-              background: '#E0E5EC',
+              border: `1px solid ${colors.border}`,
               mr: 2,
             }}
           >
-            {mobileOpen ? <Close sx={{ color: '#3D4852' }} /> : <MenuIcon sx={{ color: '#3D4852' }} />}
+            {mobileOpen ? <Close sx={{ color: colors.textPrimary }} /> : <MenuIcon sx={{ color: colors.textPrimary }} />}
           </IconButton>
-          <Typography variant="h6" sx={{ flex: 1, color: '#3D4852' }} fontWeight={700}>
+          <Typography variant="h6" sx={{ flex: 1, color: colors.textPrimary }} fontWeight={700}>
             SocialSense
           </Typography>
           <Chip
-            icon={<TokenIcon sx={{ fontSize: 16, color: '#6C63FF' }} />}
+            icon={<TokenIcon sx={{ fontSize: 16, color: colors.primary }} />}
             label={tokenBalance}
             size="small"
             sx={{
-              boxShadow: neumorphShadows.extrudedSmall,
-              background: '#E0E5EC',
-              color: '#3D4852',
+              background: colors.surface,
+              border: `1px solid ${colors.border}`,
+              color: colors.textPrimary,
               fontWeight: 600,
               mr: 1,
             }}
           />
-          <IconButton 
+          <IconButton
             onClick={handleMenuOpen}
-            sx={{
-              boxShadow: neumorphShadows.extrudedSmall,
-              background: '#E0E5EC',
-            }}
+            sx={{ border: `1px solid ${colors.border}` }}
           >
-            <Avatar sx={{ width: 32, height: 32, background: 'linear-gradient(135deg, #6C63FF 0%, #8B84FF 100%)' }}>
+            <Avatar sx={{ width: 32, height: 32, background: gradients.primary }}>
               {profile?.full_name?.[0] || 'U'}
             </Avatar>
           </IconButton>
@@ -413,10 +408,10 @@ const Layout = ({ children }) => {
         ModalProps={{ keepMounted: true }}
         sx={{
           display: { xs: 'block', md: 'none' },
-          '& .MuiDrawer-paper': { 
-            width: DRAWER_WIDTH, 
+          '& .MuiDrawer-paper': {
+            width: DRAWER_WIDTH,
             border: 'none',
-            boxShadow: neumorphShadows.extruded,
+            boxShadow: shadows.lg,
           },
         }}
       >
@@ -433,7 +428,7 @@ const Layout = ({ children }) => {
           '& .MuiDrawer-paper': {
             width: currentDrawerWidth,
             border: 'none',
-            boxShadow: neumorphShadows.extrudedSmall,
+            borderRight: `1px solid ${colors.border}`,
             transition: 'width 200ms ease-out',
             overflowX: 'hidden',
           },
@@ -450,7 +445,7 @@ const Layout = ({ children }) => {
           flexGrow: 1,
           width: { xs: '100%', md: `calc(100% - ${currentDrawerWidth}px)` },
           minHeight: '100vh',
-          background: '#E0E5EC',
+          background: colors.surface,
           pt: { xs: 8, md: 0 },
           transition: 'width 200ms ease-out',
         }}
@@ -463,38 +458,39 @@ const Layout = ({ children }) => {
             justifyContent: 'flex-end',
             p: 2,
             gap: 2,
+            background: colors.background,
+            borderBottom: `1px solid ${colors.border}`,
           }}
         >
           <Chip
-            icon={<TokenIcon sx={{ fontSize: 18, color: '#6C63FF' }} />}
+            icon={<TokenIcon sx={{ fontSize: 18, color: colors.primary }} />}
             label={`${tokenBalance} tokens`}
             onClick={() => navigate('/tokens')}
             sx={{
-              boxShadow: neumorphShadows.extrudedSmall,
-              background: '#E0E5EC',
-              color: '#3D4852',
+              background: colors.surface,
+              border: `1px solid ${colors.border}`,
+              color: colors.textPrimary,
               fontWeight: 600,
               cursor: 'pointer',
-              transition: 'all 300ms ease-out',
-              '&:hover': { 
-                boxShadow: neumorphShadows.extruded,
-                transform: 'translateY(-1px)',
+              transition: 'all 200ms ease-out',
+              '&:hover': {
+                boxShadow: shadows.card,
+                borderColor: colors.primary,
               },
             }}
           />
-          <IconButton 
+          <IconButton
             onClick={handleMenuOpen}
             sx={{
-              boxShadow: neumorphShadows.extrudedSmall,
-              background: '#E0E5EC',
-              '&:hover': { boxShadow: neumorphShadows.extruded },
+              border: `1px solid ${colors.border}`,
+              '&:hover': { background: colors.surface },
             }}
           >
             <Avatar
               sx={{
                 width: 36,
                 height: 36,
-                background: 'linear-gradient(135deg, #6C63FF 0%, #8B84FF 100%)',
+                background: gradients.primary,
               }}
             >
               {profile?.full_name?.[0] || user?.email?.[0]?.toUpperCase() || 'U'}
@@ -517,34 +513,36 @@ const Layout = ({ children }) => {
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
         PaperProps={{
           sx: {
-            boxShadow: neumorphShadows.extruded,
-            background: '#E0E5EC',
-            borderRadius: '16px',
+            boxShadow: shadows.lg,
+            background: colors.background,
+            border: `1px solid ${colors.border}`,
+            borderRadius: '12px',
             mt: 1,
+            minWidth: 200,
           },
         }}
       >
         <Box sx={{ px: 2, py: 1.5 }}>
-          <Typography variant="body2" fontWeight={600} sx={{ color: '#3D4852' }}>
+          <Typography variant="body2" fontWeight={600} sx={{ color: colors.textPrimary }}>
             {profile?.full_name || 'User'}
           </Typography>
-          <Typography variant="caption" sx={{ color: '#6B7280' }}>
+          <Typography variant="caption" sx={{ color: colors.textMuted }}>
             {user?.email}
           </Typography>
         </Box>
-        <Divider sx={{ my: 1, opacity: 0.2 }} />
-        <MenuItem onClick={handleMenuClose} sx={{ borderRadius: '8px', mx: 1 }}>
-          <ListItemIcon><PersonIcon fontSize="small" sx={{ color: '#6B7280' }} /></ListItemIcon>
-          <Typography sx={{ color: '#3D4852' }}>Profile</Typography>
+        <Divider sx={{ borderColor: colors.border }} />
+        <MenuItem onClick={handleMenuClose} sx={{ borderRadius: '8px', mx: 1, my: 0.5 }}>
+          <ListItemIcon><PersonIcon fontSize="small" sx={{ color: colors.textMuted }} /></ListItemIcon>
+          <Typography sx={{ color: colors.textPrimary }}>Profile</Typography>
         </MenuItem>
-        <MenuItem onClick={handleMenuClose} sx={{ borderRadius: '8px', mx: 1 }}>
-          <ListItemIcon><SettingsIcon fontSize="small" sx={{ color: '#6B7280' }} /></ListItemIcon>
-          <Typography sx={{ color: '#3D4852' }}>Settings</Typography>
+        <MenuItem onClick={handleMenuClose} sx={{ borderRadius: '8px', mx: 1, my: 0.5 }}>
+          <ListItemIcon><SettingsIcon fontSize="small" sx={{ color: colors.textMuted }} /></ListItemIcon>
+          <Typography sx={{ color: colors.textPrimary }}>Settings</Typography>
         </MenuItem>
-        <Divider sx={{ my: 1, opacity: 0.2 }} />
-        <MenuItem onClick={handleSignOut} sx={{ borderRadius: '8px', mx: 1 }}>
-          <ListItemIcon><LogoutIcon fontSize="small" sx={{ color: '#E53E3E' }} /></ListItemIcon>
-          <Typography sx={{ color: '#E53E3E' }}>Sign Out</Typography>
+        <Divider sx={{ borderColor: colors.border }} />
+        <MenuItem onClick={handleSignOut} sx={{ borderRadius: '8px', mx: 1, my: 0.5 }}>
+          <ListItemIcon><LogoutIcon fontSize="small" sx={{ color: colors.error }} /></ListItemIcon>
+          <Typography sx={{ color: colors.error }}>Sign Out</Typography>
         </MenuItem>
       </Menu>
     </Box>

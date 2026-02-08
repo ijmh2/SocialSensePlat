@@ -18,10 +18,10 @@ import {
   Speed,
   Security,
   YouTube,
-  MusicNote,
   ArrowForward,
   CheckCircle,
 } from '@mui/icons-material';
+import TikTokIcon from '../components/icons/TikTokIcon';
 import { motion } from 'framer-motion';
 
 const MotionBox = motion(Box);
@@ -34,7 +34,7 @@ const features = [
     description: 'Deep dive into YouTube comments with AI-powered sentiment analysis and theme extraction.',
   },
   {
-    icon: MusicNote,
+    icon: TikTokIcon,
     title: 'TikTok Insights',
     description: 'Understand your TikTok audience with comprehensive comment analysis and trends.',
   },

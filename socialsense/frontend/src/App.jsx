@@ -24,10 +24,10 @@ const LoadingFallback = () => (
       justifyContent: 'center',
       alignItems: 'center',
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #0F0F1A 0%, #1A1A2E 100%)',
+      background: '#FFFFFF',
     }}
   >
-    <CircularProgress size={48} />
+    <CircularProgress size={48} sx={{ color: '#1E40AF' }} />
   </Box>
 );
 
