@@ -16,10 +16,10 @@ import webhooksRoutes from './routes/webhooks.js';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Trust proxy for Railway/Vercel (needed for rate limiting behind reverse proxy)
+// Trust proxy for Railway (1 = trust first proxy)
 // Must be set BEFORE any middleware that uses it
-app.set('trust proxy', true);
-console.log('✅ Trust proxy enabled');
+app.set('trust proxy', 1);
+console.log('✅ Trust proxy enabled (1 hop)');
 
 // Security middleware
 app.use(helmet());
@@ -35,6 +35,7 @@ const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
   message: { error: 'Too many requests, please try again later.' },
+  validate: { trustProxy: false }, // Skip trust proxy validation for Railway
 });
 app.use('/api/', limiter);
 
