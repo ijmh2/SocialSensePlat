@@ -181,6 +181,8 @@ router.post('/comments', authenticate, uploadFields, async (req, res) => {
 
     // Convert string booleans to actual booleans
     const isMyVideo = is_my_video === 'true' || is_my_video === true;
+    console.log('[Analysis] is_my_video raw:', is_my_video, 'converted:', isMyVideo);
+    console.log('[Analysis] creator_notes:', creator_notes);
 
     if (!url || !platform) {
       return res.status(400).json({ error: 'URL and platform are required' });
@@ -698,6 +700,8 @@ async function processAnalysisJob({
       priority_improvement: analysisResult.priorityImprovement || null,
       notes_assessment: analysisResult.notesAssessment || null,
     }).eq('id', analysisId);
+
+    console.log('[Analysis] Final save - videoScore:', analysisResult.videoScore, 'priorityImprovement:', analysisResult.priorityImprovement ? 'found' : 'null');
 
     if (finalMetaError) {
       console.error('Final Save Meta Error:', finalMetaError);

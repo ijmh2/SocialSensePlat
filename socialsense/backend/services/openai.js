@@ -83,6 +83,8 @@ function extractNotesAssessment(summary) {
  * @param {string} creatorNotes - Creator's self-assessment before seeing results
  */
 export async function analyzeComments(comments, platform, marketingContext = null, videoTranscript = null, videoFrames = null, isMyVideo = false, creatorNotes = null) {
+  console.log('[OpenAI] analyzeComments called with isMyVideo:', isMyVideo, 'creatorNotes:', creatorNotes ? 'provided' : 'none');
+
   if (!comments || comments.length === 0) {
     return {
       summary: 'No comments available for analysis.',
@@ -376,6 +378,8 @@ Be direct. If the creator is wrong, tell them clearly with evidence from the com
     const videoScore = isMyVideo ? extractVideoScore(summary) : null;
     const priorityImprovement = isMyVideo ? extractPriorityImprovement(summary) : null;
     const notesAssessment = creatorNotes ? extractNotesAssessment(summary) : null;
+
+    console.log('[OpenAI] Scoring extraction - isMyVideo:', isMyVideo, 'videoScore:', videoScore, 'priorityImprovement:', priorityImprovement ? 'found' : 'null');
 
     return {
       summary: summary + footer,
