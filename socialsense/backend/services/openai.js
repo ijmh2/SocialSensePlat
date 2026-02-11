@@ -45,7 +45,9 @@ function extractVideoScore(summary) {
   const patterns = [
     /\*\*Overall Score:\s*(\d{1,3})\/100\*\*/i,
     /Overall Score:\s*(\d{1,3})\/100/i,
+    /\*\*Score:\s*(\d{1,3})\/100\*\*/i,
     /Score:\s*(\d{1,3})\/100/i,
+    /(\d{1,3})\/100/i, // Fallback: any X/100 pattern
   ];
 
   for (const pattern of patterns) {
@@ -53,10 +55,12 @@ function extractVideoScore(summary) {
     if (match) {
       const score = parseInt(match[1], 10);
       if (score >= 0 && score <= 100) {
+        console.log('[OpenAI] Score extracted:', score, 'using pattern:', pattern.toString());
         return score;
       }
     }
   }
+  console.log('[OpenAI] No score found in response. Last 500 chars:', summary.slice(-500));
   return null;
 }
 
@@ -360,6 +364,17 @@ Be direct. If the creator is wrong, tell them clearly with evidence from the com
 
     console.log('[AI] Received response from OpenAI');
     const summary = response.choices[0].message.content;
+
+    // Log score section if this is a "my video" analysis
+    if (isMyVideo) {
+      console.log('[AI] My Video analysis - looking for score section...');
+      const scoreSection = summary.match(/VIDEO SCORE[\s\S]*$/i);
+      if (scoreSection) {
+        console.log('[AI] Score section found:', scoreSection[0].slice(0, 300));
+      } else {
+        console.log('[AI] No VIDEO SCORE section found. Last 500 chars:', summary.slice(-500));
+      }
+    }
 
     let footer = `
 
