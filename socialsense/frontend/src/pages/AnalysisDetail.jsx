@@ -21,6 +21,10 @@ import {
   TableRow,
   Tabs,
   Tab,
+  ToggleButton,
+  ToggleButtonGroup,
+  TextField,
+  InputAdornment,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -32,6 +36,8 @@ import {
   FilterAlt,
   Lightbulb,
   SentimentSatisfied,
+  SentimentDissatisfied,
+  SentimentNeutral,
   ExpandMore,
   ExpandLess,
   Star,
@@ -39,6 +45,8 @@ import {
   Warning,
   TipsAndUpdates,
   Psychology,
+  Search,
+  ThumbUp,
 } from '@mui/icons-material';
 import Collapse from '@mui/material/Collapse';
 import {
@@ -72,6 +80,7 @@ const AnalysisDetail = () => {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState(0);
   const [transcriptOpen, setTranscriptOpen] = useState(false);
+  const [sentimentFilter, setSentimentFilter] = useState('all'); // 'all', 'positive', 'neutral', 'negative'
 
   useEffect(() => {
     loadAnalysis();
@@ -779,7 +788,12 @@ const AnalysisDetail = () => {
                         p: 2,
                         borderRadius: 2,
                         background: alpha(theme.palette.success.main, 0.1),
+                        cursor: 'pointer',
+                        border: sentimentFilter === 'positive' ? `2px solid ${theme.palette.success.main}` : '2px solid transparent',
+                        transition: 'all 0.2s',
+                        '&:hover': { background: alpha(theme.palette.success.main, 0.15) },
                       }}
+                      onClick={() => setSentimentFilter(sentimentFilter === 'positive' ? 'all' : 'positive')}
                     >
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <SentimentSatisfied sx={{ color: theme.palette.success.main }} />
@@ -803,10 +817,15 @@ const AnalysisDetail = () => {
                         p: 2,
                         borderRadius: 2,
                         background: alpha(theme.palette.grey[500], 0.1),
+                        cursor: 'pointer',
+                        border: sentimentFilter === 'neutral' ? `2px solid ${theme.palette.grey[500]}` : '2px solid transparent',
+                        transition: 'all 0.2s',
+                        '&:hover': { background: alpha(theme.palette.grey[500], 0.15) },
                       }}
+                      onClick={() => setSentimentFilter(sentimentFilter === 'neutral' ? 'all' : 'neutral')}
                     >
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <SentimentSatisfied sx={{ color: theme.palette.grey[500] }} />
+                        <SentimentNeutral sx={{ color: theme.palette.grey[500] }} />
                         <Typography variant="body1" fontWeight={500}>Neutral</Typography>
                       </Box>
                       <Box sx={{ textAlign: 'right' }}>
@@ -827,10 +846,15 @@ const AnalysisDetail = () => {
                         p: 2,
                         borderRadius: 2,
                         background: alpha(theme.palette.error.main, 0.1),
+                        cursor: 'pointer',
+                        border: sentimentFilter === 'negative' ? `2px solid ${theme.palette.error.main}` : '2px solid transparent',
+                        transition: 'all 0.2s',
+                        '&:hover': { background: alpha(theme.palette.error.main, 0.15) },
                       }}
+                      onClick={() => setSentimentFilter(sentimentFilter === 'negative' ? 'all' : 'negative')}
                     >
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <SentimentSatisfied sx={{ color: theme.palette.error.main }} />
+                        <SentimentDissatisfied sx={{ color: theme.palette.error.main }} />
                         <Typography variant="body1" fontWeight={500}>Negative</Typography>
                       </Box>
                       <Box sx={{ textAlign: 'right' }}>
@@ -886,6 +910,121 @@ const AnalysisDetail = () => {
                         {(sentimentScores.average_score || 0).toFixed(2)}
                       </Typography>
                     </Box>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Filtered Comments */}
+            <Grid item xs={12}>
+              <Card>
+                <CardContent>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                    <Typography variant="h6" fontWeight={600}>
+                      Comments by Sentiment
+                      {sentimentFilter !== 'all' && (
+                        <Chip
+                          label={sentimentFilter}
+                          size="small"
+                          onDelete={() => setSentimentFilter('all')}
+                          sx={{
+                            ml: 2,
+                            textTransform: 'capitalize',
+                            background: sentimentFilter === 'positive'
+                              ? alpha(theme.palette.success.main, 0.15)
+                              : sentimentFilter === 'negative'
+                                ? alpha(theme.palette.error.main, 0.15)
+                                : alpha(theme.palette.grey[500], 0.15),
+                            color: sentimentFilter === 'positive'
+                              ? theme.palette.success.main
+                              : sentimentFilter === 'negative'
+                                ? theme.palette.error.main
+                                : theme.palette.grey[600],
+                          }}
+                        />
+                      )}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Click sentiment rows above to filter
+                    </Typography>
+                  </Box>
+                  <Box sx={{ maxHeight: 400, overflowY: 'auto' }}>
+                    {comments
+                      .filter(c => sentimentFilter === 'all' || c.sentiment?.label === sentimentFilter)
+                      .slice(0, 50)
+                      .map((comment, idx) => (
+                        <Box
+                          key={idx}
+                          sx={{
+                            p: 2,
+                            mb: 1,
+                            borderRadius: 2,
+                            background: alpha(
+                              comment.sentiment?.label === 'positive'
+                                ? theme.palette.success.main
+                                : comment.sentiment?.label === 'negative'
+                                  ? theme.palette.error.main
+                                  : theme.palette.grey[500],
+                              0.05
+                            ),
+                            borderLeft: `3px solid ${
+                              comment.sentiment?.label === 'positive'
+                                ? theme.palette.success.main
+                                : comment.sentiment?.label === 'negative'
+                                  ? theme.palette.error.main
+                                  : theme.palette.grey[400]
+                            }`,
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
+                            <Typography variant="body2" fontWeight={600} color="text.secondary">
+                              {comment.user || 'Anonymous'}
+                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              {comment.likes > 0 && (
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                  <ThumbUp sx={{ fontSize: 14, color: 'text.secondary' }} />
+                                  <Typography variant="caption" color="text.secondary">
+                                    {comment.likes}
+                                  </Typography>
+                                </Box>
+                              )}
+                              <Chip
+                                label={comment.sentiment?.label || 'unknown'}
+                                size="small"
+                                sx={{
+                                  height: 20,
+                                  fontSize: '0.7rem',
+                                  textTransform: 'capitalize',
+                                  background: comment.sentiment?.label === 'positive'
+                                    ? alpha(theme.palette.success.main, 0.15)
+                                    : comment.sentiment?.label === 'negative'
+                                      ? alpha(theme.palette.error.main, 0.15)
+                                      : alpha(theme.palette.grey[500], 0.15),
+                                  color: comment.sentiment?.label === 'positive'
+                                    ? theme.palette.success.main
+                                    : comment.sentiment?.label === 'negative'
+                                      ? theme.palette.error.main
+                                      : theme.palette.grey[600],
+                                }}
+                              />
+                            </Box>
+                          </Box>
+                          <Typography variant="body2">
+                            {comment.clean_text || comment.text}
+                          </Typography>
+                        </Box>
+                      ))}
+                    {comments.filter(c => sentimentFilter === 'all' || c.sentiment?.label === sentimentFilter).length === 0 && (
+                      <Typography color="text.secondary" textAlign="center" py={4}>
+                        No comments found with this sentiment
+                      </Typography>
+                    )}
+                    {comments.filter(c => sentimentFilter === 'all' || c.sentiment?.label === sentimentFilter).length > 50 && (
+                      <Typography variant="body2" color="text.secondary" textAlign="center" py={2}>
+                        Showing first 50 of {comments.filter(c => sentimentFilter === 'all' || c.sentiment?.label === sentimentFilter).length} comments
+                      </Typography>
+                    )}
                   </Box>
                 </CardContent>
               </Card>

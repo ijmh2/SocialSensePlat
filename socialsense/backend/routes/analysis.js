@@ -385,6 +385,42 @@ router.get('/account-score', authenticate, async (req, res) => {
 });
 
 /**
+ * GET /api/analysis/score-history
+ * Get score trend data for the user's "my video" analyses
+ */
+router.get('/score-history', authenticate, async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('analyses')
+      .select('id, video_title, video_score, created_at')
+      .eq('user_id', req.user.id)
+      .eq('is_my_video', true)
+      .eq('status', 'completed')
+      .not('video_score', 'is', null)
+      .order('created_at', { ascending: true })
+      .limit(20);
+
+    if (error) {
+      console.error('Score history error:', error);
+      return res.status(500).json({ error: 'Failed to fetch score history' });
+    }
+
+    // Format for chart
+    const history = (data || []).map(a => ({
+      id: a.id,
+      title: a.video_title || 'Untitled',
+      score: a.video_score,
+      date: a.created_at,
+    }));
+
+    res.json({ history });
+  } catch (error) {
+    console.error('Score history error:', error);
+    res.status(500).json({ error: 'Failed to fetch score history' });
+  }
+});
+
+/**
  * GET /api/analysis/:id
  */
 router.get('/:id', authenticate, async (req, res) => {
@@ -699,9 +735,10 @@ async function processAnalysisJob({
       video_score: analysisResult.videoScore || null,
       priority_improvement: analysisResult.priorityImprovement || null,
       notes_assessment: analysisResult.notesAssessment || null,
+      marketing_insights: analysisResult.marketingInsights || null,
     }).eq('id', analysisId);
 
-    console.log('[Analysis] Final save - videoScore:', analysisResult.videoScore, 'priorityImprovement:', analysisResult.priorityImprovement ? 'found' : 'null');
+    console.log('[Analysis] Final save - videoScore:', analysisResult.videoScore, 'priorityImprovement:', analysisResult.priorityImprovement ? 'found' : 'null', 'marketingInsights:', analysisResult.marketingInsights ? 'found' : 'null');
 
     if (finalMetaError) {
       console.error('Final Save Meta Error:', finalMetaError);

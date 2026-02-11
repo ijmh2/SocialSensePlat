@@ -81,6 +81,19 @@ function extractNotesAssessment(summary) {
 }
 
 /**
+ * Extract marketing insights from AI response
+ */
+function extractMarketingInsights(summary) {
+  const match = summary.match(/\*\*MARKETING_INSIGHTS_START\*\*([\s\S]*?)\*\*MARKETING_INSIGHTS_END\*\*/i);
+  if (match) {
+    return match[1].trim();
+  }
+  // Fallback: try to find the Marketing Analysis section
+  const fallback = summary.match(/## MARKETING ANALYSIS([\s\S]*?)(?=---|\*\*Overall Score|## VIDEO SCORE|## CREATOR|$)/i);
+  return fallback ? fallback[1].trim() : null;
+}
+
+/**
  * Analyze comments and generate insights
  * Optionally includes video transcript and frames for unified analysis
  * @param {boolean} isMyVideo - If true, enables harsh scoring mode
@@ -238,14 +251,25 @@ Rank the top 3-5 changes by potential impact (not just frequency). For each:
     prompt += `
 
 ---
-## Marketing Analysis Extension
+## MARKETING ANALYSIS
+
 Product Description: "${marketingContext.description}"
 
-Based on the comments AND the product image provided:
-1. Current perception vs intended positioning
-2. Visual/messaging resonance gaps
-3. Specific ${platform} content strategy improvements
-4. Testable creative adjustments
+Based on the comments AND the product image provided, analyze:
+
+**MARKETING_INSIGHTS_START**
+### Perception vs Positioning
+[How audience perceives the product vs intended positioning]
+
+### Messaging Gaps
+[Visual/messaging resonance issues identified from comments]
+
+### Platform Strategy
+[Specific ${platform} content strategy improvements]
+
+### Creative Tests
+[Testable creative adjustments with expected outcomes]
+**MARKETING_INSIGHTS_END**
 
 **Important:** Image insights are hypotheses only. Comment evidence takes precedence.`;
   }
@@ -393,8 +417,12 @@ Be direct. If the creator is wrong, tell them clearly with evidence from the com
     const videoScore = isMyVideo ? extractVideoScore(summary) : null;
     const priorityImprovement = isMyVideo ? extractPriorityImprovement(summary) : null;
     const notesAssessment = creatorNotes ? extractNotesAssessment(summary) : null;
+    const marketingInsights = marketingContext ? extractMarketingInsights(summary) : null;
 
     console.log('[OpenAI] Scoring extraction - isMyVideo:', isMyVideo, 'videoScore:', videoScore, 'priorityImprovement:', priorityImprovement ? 'found' : 'null');
+    if (marketingInsights) {
+      console.log('[OpenAI] Marketing insights extracted:', marketingInsights.slice(0, 100) + '...');
+    }
 
     return {
       summary: summary + footer,
@@ -410,6 +438,7 @@ Be direct. If the creator is wrong, tell them clearly with evidence from the com
       videoScore,
       priorityImprovement,
       notesAssessment,
+      marketingInsights,
     };
 
   } catch (aiError) {
@@ -429,6 +458,7 @@ Be direct. If the creator is wrong, tell them clearly with evidence from the com
       videoScore: null,
       priorityImprovement: null,
       notesAssessment: null,
+      marketingInsights: null,
     };
   }
 }

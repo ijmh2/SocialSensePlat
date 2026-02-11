@@ -93,6 +93,7 @@ export const analysisApi = {
   }),
   getProgress: (requestId) => api.get(`/analysis/progress/${requestId}`),
   getAccountScore: () => api.get('/analysis/account-score'),
+  getScoreHistory: () => api.get('/analysis/score-history'),
 };
 
 export default api;
