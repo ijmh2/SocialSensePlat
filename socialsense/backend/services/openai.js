@@ -257,29 +257,29 @@ Based on the comments AND the product image provided:
 ---
 ## VIDEO SCORE (0-100)
 
-Be brutally honest. Most content is mediocre (40-60). Reserve high scores for exceptional work.
+IMPORTANT: Analyze the SPECIFIC comments above and assign a PRECISE score. Do NOT default to generic middle scores like 50 or 55. Every video is different - your score should reflect THIS video's actual performance.
 
-Score based on:
-- Audience Engagement Quality (40%): Substantive comments vs generic praise
-- Content-Audience Fit (30%): Does content resonate? Are viewers confused?
-- Conversion Signals (20%): Purchase intent, action-taking, value gained
-- Red Flags (-10%): Negative sentiment, complaints, clickbait backlash
+Score based on comment evidence:
+- Audience Engagement Quality (40%): Are comments substantive discussions or just "nice video" spam?
+- Content-Audience Fit (30%): Do viewers understand and resonate, or are they confused/off-topic?
+- Conversion Signals (20%): Purchase intent, action-taking, questions about how to apply the content
+- Red Flags (-10%): Complaints, negative sentiment, clickbait backlash, viewer disappointment
 
-**Scoring Guidelines:**
-- 90-100: Exceptional - Viral potential, extremely high engagement
-- 75-89: Strong - Great audience connection, minor improvements
-- 60-74: Average - Solid content with clear improvement areas
-- 40-59: Below Average - Significant issues need addressing
-- 20-39: Poor - Major content or targeting problems
-- 0-19: Critical - Fundamental issues, needs complete rethink
+**Scoring Reference:**
+- 85-100: Exceptional - Comments show deep engagement, questions, sharing intent, purchase signals
+- 70-84: Strong - Mostly positive with substantive feedback, clear audience connection
+- 55-69: Average - Generic positive reactions, some engagement but lacks depth
+- 40-54: Below Average - Confusion, off-topic comments, weak engagement signals
+- 25-39: Poor - Significant negative feedback, audience mismatch, complaints
+- 0-24: Critical - Overwhelmingly negative, misleading content, audience rejection
 
-**Output at END of your analysis (REQUIRED FORMAT):**
+**REQUIRED OUTPUT FORMAT (at END of analysis):**
 
-**Overall Score: [X]/100**
+**Overall Score: [YOUR CALCULATED NUMBER]/100**
 
-**Priority Improvement:** [Single most impactful change to boost score]
+**Priority Improvement:** [The single most impactful change based on comment evidence]
 
-[2-3 sentence justification with specific comment evidence]`;
+[2-3 sentences explaining WHY this specific score, citing specific comment patterns or quotes]`;
   }
 
   // Add notes reality check if creator provided notes
