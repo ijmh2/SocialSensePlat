@@ -59,7 +59,9 @@ const CommentAnalysis = () => {
   const [productImage, setProductImage] = useState(null);
   const [videoFile, setVideoFile] = useState(null);
   const [isMyVideo, setIsMyVideo] = useState(false);
+  const [isCompetitor, setIsCompetitor] = useState(false);
   const [creatorNotes, setCreatorNotes] = useState('');
+  const [competitorNotes, setCompetitorNotes] = useState('');
 
   const [estimating, setEstimating] = useState(false);
   const [estimate, setEstimate] = useState(null);
@@ -211,8 +213,12 @@ const CommentAnalysis = () => {
 
       // Account score fields
       formData.append('is_my_video', isMyVideo);
+      formData.append('is_competitor', isCompetitor);
       if (isMyVideo && creatorNotes.trim()) {
         formData.append('creator_notes', creatorNotes.trim());
+      }
+      if (isCompetitor && competitorNotes.trim()) {
+        formData.append('competitor_notes', competitorNotes.trim());
       }
 
       const { data } = await analysisApi.analyzeComments(formData);
@@ -541,28 +547,67 @@ const CommentAnalysis = () => {
 
             <Divider sx={{ my: 3 }} />
 
-            {/* Account Score Section */}
-            <Box sx={{ mb: 2 }}>
-              <FormControlLabel
-                control={
+            {/* Video Ownership Section */}
+            <Typography variant="body2" fontWeight={600} sx={{ mb: 2, color: colors.textPrimary }}>
+              Whose video is this?
+            </Typography>
+
+            <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+              {/* My Video Option */}
+              <Card
+                onClick={() => { setIsMyVideo(true); setIsCompetitor(false); }}
+                sx={{
+                  flex: 1,
+                  cursor: 'pointer',
+                  borderRadius: '16px',
+                  boxShadow: isMyVideo ? shadows.sm : shadows.card,
+                  background: colors.background,
+                  border: isMyVideo ? `2px solid ${colors.primary}` : `1px solid ${colors.border}`,
+                  transition: 'all 200ms ease-out',
+                  p: 2,
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                   <Checkbox
                     checked={isMyVideo}
-                    onChange={(e) => setIsMyVideo(e.target.checked)}
-                    sx={{ color: colors.primary }}
+                    sx={{ p: 0, color: colors.primary }}
                   />
-                }
-                label={
-                  <Box>
-                    <Typography variant="body1" fontWeight={600} sx={{ color: colors.textPrimary }}>
-                      This is my video
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: colors.textSecondary }}>
-                      Enable scoring mode — get a 0-100 score that contributes to your Account Score
-                    </Typography>
-                  </Box>
-                }
-                sx={{ display: 'flex', alignItems: 'flex-start' }}
-              />
+                  <Typography variant="body1" fontWeight={600} sx={{ color: colors.textPrimary }}>
+                    My Video
+                  </Typography>
+                </Box>
+                <Typography variant="caption" sx={{ color: colors.textSecondary }}>
+                  Get a 0-100 score that contributes to your Account Score
+                </Typography>
+              </Card>
+
+              {/* Competitor Option */}
+              <Card
+                onClick={() => { setIsCompetitor(true); setIsMyVideo(false); }}
+                sx={{
+                  flex: 1,
+                  cursor: 'pointer',
+                  borderRadius: '16px',
+                  boxShadow: isCompetitor ? shadows.sm : shadows.card,
+                  background: colors.background,
+                  border: isCompetitor ? '2px solid #E53E3E' : `1px solid ${colors.border}`,
+                  transition: 'all 200ms ease-out',
+                  p: 2,
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                  <Checkbox
+                    checked={isCompetitor}
+                    sx={{ p: 0, color: '#E53E3E' }}
+                  />
+                  <Typography variant="body1" fontWeight={600} sx={{ color: colors.textPrimary }}>
+                    Competitor
+                  </Typography>
+                </Box>
+                <Typography variant="caption" sx={{ color: colors.textSecondary }}>
+                  Analyze rival content — won't affect your Account Score
+                </Typography>
+              </Card>
             </Box>
 
             <Collapse in={isMyVideo}>
@@ -580,6 +625,25 @@ const CommentAnalysis = () => {
                   placeholder="e.g., I think the hook worked well, the call-to-action was clear..."
                   value={creatorNotes}
                   onChange={(e) => setCreatorNotes(e.target.value)}
+                />
+              </Card>
+            </Collapse>
+
+            <Collapse in={isCompetitor}>
+              <Card sx={{ p: 2, mb: 3, borderRadius: '16px', boxShadow: shadows.sm, background: '#FEF2F2', border: '1px solid #FECACA' }}>
+                <Typography variant="body2" fontWeight={600} sx={{ mb: 1, color: '#991B1B' }}>
+                  What do you want to learn? (Optional)
+                </Typography>
+                <Typography variant="caption" sx={{ color: '#B91C1C', display: 'block', mb: 2 }}>
+                  Describe what you're trying to understand about this competitor. The AI will focus on extracting actionable competitive intelligence.
+                </Typography>
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={3}
+                  placeholder="e.g., How do they handle objections? What makes their audience engage? What can I copy?"
+                  value={competitorNotes}
+                  onChange={(e) => setCompetitorNotes(e.target.value)}
                 />
               </Card>
             </Collapse>

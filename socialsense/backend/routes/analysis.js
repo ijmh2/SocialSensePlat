@@ -176,13 +176,18 @@ router.post('/comments', authenticate, uploadFields, async (req, res) => {
       product_description,
       request_id,
       is_my_video = false,
+      is_competitor = false,
       creator_notes = '',
+      competitor_notes = '',
     } = req.body;
 
     // Convert string booleans to actual booleans
     const isMyVideo = is_my_video === 'true' || is_my_video === true;
+    const isCompetitor = is_competitor === 'true' || is_competitor === true;
     console.log('[Analysis] is_my_video raw:', is_my_video, 'converted:', isMyVideo);
+    console.log('[Analysis] is_competitor raw:', is_competitor, 'converted:', isCompetitor);
     console.log('[Analysis] creator_notes:', creator_notes);
+    console.log('[Analysis] competitor_notes:', competitor_notes);
 
     if (!url || !platform) {
       return res.status(400).json({ error: 'URL and platform are required' });
@@ -269,7 +274,9 @@ router.post('/comments', authenticate, uploadFields, async (req, res) => {
         status: 'processing',
         has_video: !!videoFile,
         is_my_video: isMyVideo,
+        is_competitor: isCompetitor,
         creator_notes: creator_notes || null,
+        competitor_notes: competitor_notes || null,
       })
       .select()
       .single();
@@ -294,7 +301,9 @@ router.post('/comments', authenticate, uploadFields, async (req, res) => {
       request_id,
       startTime: Date.now(),
       isMyVideo,
+      isCompetitor,
       creatorNotes: creator_notes || null,
+      competitorNotes: competitor_notes || null,
     }).catch(err => console.error('Background Job Failed:', err));
 
     // 6. Return Immediately
@@ -321,7 +330,7 @@ router.get('/history', authenticate, async (req, res) => {
 
     let query = supabaseAdmin
       .from('analyses')
-      .select('id, platform, video_title, analysis_type, comment_count, tokens_used, status, created_at, is_my_video, video_score, priority_improvement', { count: 'exact' })
+      .select('id, platform, video_title, analysis_type, comment_count, tokens_used, status, created_at, is_my_video, is_competitor, video_score, priority_improvement', { count: 'exact' })
       .eq('user_id', req.user.id)
       .order('created_at', { ascending: false })
       .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
@@ -442,6 +451,49 @@ router.get('/:id', authenticate, async (req, res) => {
   } catch (error) {
     console.error('Get analysis error:', error);
     res.status(500).json({ error: 'Failed to fetch analysis' });
+  }
+});
+
+/**
+ * PATCH /api/analysis/:id/action-items
+ * Update action item completion status
+ */
+router.patch('/:id/action-items', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { actionItems } = req.body;
+
+    if (!Array.isArray(actionItems)) {
+      return res.status(400).json({ error: 'actionItems must be an array' });
+    }
+
+    // Verify ownership
+    const { data: analysis, error: fetchError } = await supabaseAdmin
+      .from('analyses')
+      .select('id, user_id')
+      .eq('id', id)
+      .eq('user_id', req.user.id)
+      .single();
+
+    if (fetchError || !analysis) {
+      return res.status(404).json({ error: 'Analysis not found' });
+    }
+
+    // Update action items
+    const { error: updateError } = await supabaseAdmin
+      .from('analyses')
+      .update({ action_items: actionItems })
+      .eq('id', id);
+
+    if (updateError) {
+      console.error('Action items update error:', updateError);
+      return res.status(500).json({ error: 'Failed to update action items' });
+    }
+
+    res.json({ success: true, actionItems });
+  } catch (error) {
+    console.error('Action items update error:', error);
+    res.status(500).json({ error: 'Failed to update action items' });
   }
 });
 
@@ -607,7 +659,7 @@ async function extractAudio(videoPath) {
 async function processAnalysisJob({
   analysisId, videoId, platform, commentsToFetch,
   includeText, includeMkt, product_description, productImagePath, videoFilePath, request_id, startTime,
-  isMyVideo = false, creatorNotes = null
+  isMyVideo = false, isCompetitor = false, creatorNotes = null, competitorNotes = null
 }) {
   try {
     // 1. Scrape Comments
@@ -703,7 +755,7 @@ async function processAnalysisJob({
       if (request_id) progressMap.set(request_id, { stage: 'analyzing_ai', count: rawComments.length, percent: 88 });
 
       try {
-        analysisResult = await analyzeComments(processedComments, platform, marketingContext, videoTranscript, videoFrames, isMyVideo, creatorNotes);
+        analysisResult = await analyzeComments(processedComments, platform, marketingContext, videoTranscript, videoFrames, isMyVideo, creatorNotes, isCompetitor, competitorNotes);
       } catch (aiErr) {
         console.error('AI Error:', aiErr);
         const fallback = extractThemesAndKeywords(processedComments.map(c => c.clean_text));
@@ -734,11 +786,14 @@ async function processAnalysisJob({
       processing_time_ms: processingTime,
       video_score: analysisResult.videoScore || null,
       priority_improvement: analysisResult.priorityImprovement || null,
+      score_breakdown: analysisResult.scoreBreakdown || null,
       notes_assessment: analysisResult.notesAssessment || null,
       marketing_insights: analysisResult.marketingInsights || null,
+      competitor_analysis: analysisResult.competitorAnalysis || null,
+      action_items: analysisResult.actionItems || [],
     }).eq('id', analysisId);
 
-    console.log('[Analysis] Final save - videoScore:', analysisResult.videoScore, 'priorityImprovement:', analysisResult.priorityImprovement ? 'found' : 'null', 'marketingInsights:', analysisResult.marketingInsights ? 'found' : 'null');
+    console.log('[Analysis] Final save - videoScore:', analysisResult.videoScore, 'scoreBreakdown:', analysisResult.scoreBreakdown ? 'found' : 'null', 'priorityImprovement:', analysisResult.priorityImprovement ? 'found' : 'null', 'actionItems:', analysisResult.actionItems?.length || 0);
 
     if (finalMetaError) {
       console.error('Final Save Meta Error:', finalMetaError);

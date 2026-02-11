@@ -31,6 +31,7 @@ import {
   Settings as SettingsIcon,
   Person as PersonIcon,
   AutoGraph as AnalyticsIcon,
+  Timeline as PerformanceIcon,
   ChevronLeft,
   ChevronRight,
   Close,
@@ -46,6 +47,7 @@ const DRAWER_COLLAPSED_WIDTH = 80;
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
   { path: '/analyze/comments', label: 'Analysis', icon: CommentIcon },
+  { path: '/performance', label: 'Performance', icon: PerformanceIcon },
   { path: '/history', label: 'History', icon: HistoryIcon },
   { path: '/tokens', label: 'Buy Tokens', icon: TokenIcon },
 ];

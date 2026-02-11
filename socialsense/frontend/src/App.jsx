@@ -15,6 +15,7 @@ const Tokens = lazy(() => import('./pages/Tokens'));
 const TokenSuccess = lazy(() => import('./pages/TokenSuccess'));
 const History = lazy(() => import('./pages/History'));
 const AnalysisDetail = lazy(() => import('./pages/AnalysisDetail'));
+const Performance = lazy(() => import('./pages/Performance'));
 
 // Loading fallback
 const LoadingFallback = () => (
@@ -143,6 +144,16 @@ function App() {
             <ProtectedRoute>
               <Layout>
                 <History />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/performance"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <Performance />
               </Layout>
             </ProtectedRoute>
           }

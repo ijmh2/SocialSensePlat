@@ -94,6 +94,12 @@ export const analysisApi = {
   getProgress: (requestId) => api.get(`/analysis/progress/${requestId}`),
   getAccountScore: () => api.get('/analysis/account-score'),
   getScoreHistory: () => api.get('/analysis/score-history'),
+  updateActionItems: (id, actionItems) => api.patch(`/analysis/${id}/action-items`, { actionItems }),
+};
+
+// Analytics endpoints
+export const analyticsApi = {
+  getPerformance: () => api.get('/analytics/performance'),
 };
 
 export default api;

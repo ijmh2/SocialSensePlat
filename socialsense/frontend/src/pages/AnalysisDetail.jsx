@@ -47,6 +47,9 @@ import {
   Psychology,
   Search,
   ThumbUp,
+  CompareArrows,
+  Visibility,
+  PictureAsPdf,
 } from '@mui/icons-material';
 import Collapse from '@mui/material/Collapse';
 import {
@@ -66,7 +69,10 @@ import toast from 'react-hot-toast';
 import ReactMarkdown from 'react-markdown';
 
 import { analysisApi } from '../utils/api';
+import { generateAnalysisPDF } from '../utils/pdfExport';
 import TikTokIcon from '../components/icons/TikTokIcon';
+import ActionPlanCard from '../components/ActionPlanCard';
+import ScoreBreakdown from '../components/ScoreBreakdown';
 
 const MotionBox = motion(Box);
 
@@ -120,6 +126,15 @@ const AnalysisDetail = () => {
       toast.success('CSV exported successfully');
     } catch (err) {
       toast.error('Failed to export CSV');
+    }
+  };
+
+  const handlePdfExport = () => {
+    try {
+      generateAnalysisPDF(analysis);
+      toast.success('PDF export opened in new tab');
+    } catch (err) {
+      toast.error(err.message || 'Failed to export PDF');
     }
   };
 
@@ -337,20 +352,49 @@ const AnalysisDetail = () => {
                 }}
               />
             )}
+            {analysis.is_competitor && (
+              <Chip
+                icon={<CompareArrows sx={{ fontSize: 16 }} />}
+                label="Competitor"
+                size="small"
+                sx={{
+                  background: alpha('#E53E3E', 0.15),
+                  color: '#E53E3E',
+                  fontWeight: 600,
+                }}
+              />
+            )}
           </Box>
           <Typography variant="body2" color="text.secondary">
             {formatDate(analysis.created_at)} • {analysis.tokens_used} tokens used
             {analysis.is_my_video && ' • My Video'}
           </Typography>
         </Box>
-        {analysis.status === 'completed' && analysis.raw_comments?.length > 0 && (
-          <Button
-            variant="contained"
-            startIcon={<Download />}
-            onClick={handleExport}
-          >
-            Export CSV
-          </Button>
+        {analysis.status === 'completed' && (
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              variant="contained"
+              startIcon={<PictureAsPdf />}
+              onClick={handlePdfExport}
+              sx={{
+                background: 'linear-gradient(135deg, #DC2626 0%, #EF4444 100%)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #B91C1C 0%, #DC2626 100%)',
+                },
+              }}
+            >
+              Export PDF
+            </Button>
+            {analysis.raw_comments?.length > 0 && (
+              <Button
+                variant="outlined"
+                startIcon={<Download />}
+                onClick={handleExport}
+              >
+                Export CSV
+              </Button>
+            )}
+          </Box>
         )}
       </Box>
 
@@ -398,6 +442,14 @@ const AnalysisDetail = () => {
         </Card>
       )}
 
+      {/* Score Breakdown */}
+      {analysis.is_my_video && analysis.video_score != null && analysis.score_breakdown && (
+        <ScoreBreakdown
+          breakdown={analysis.score_breakdown}
+          totalScore={analysis.video_score}
+        />
+      )}
+
       {/* Creator Notes Reality Check */}
       {analysis.is_my_video && analysis.creator_notes && (
         <Card
@@ -437,6 +489,103 @@ const AnalysisDetail = () => {
             )}
           </CardContent>
         </Card>
+      )}
+
+      {/* Competitor Analysis Intelligence */}
+      {analysis.is_competitor && (
+        <Card
+          sx={{
+            mb: 3,
+            background: 'linear-gradient(135deg, #FEF2F2 0%, #FFF5F5 100%)',
+            border: '1px solid #FECACA',
+          }}
+        >
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+              <Box
+                sx={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: '#E53E3E',
+                }}
+              >
+                <Visibility sx={{ color: 'white', fontSize: 24 }} />
+              </Box>
+              <Box>
+                <Typography variant="h6" fontWeight={700} sx={{ color: '#991B1B' }}>
+                  Competitor Intelligence Report
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#B91C1C' }}>
+                  Strategic insights extracted from competitor's audience
+                </Typography>
+              </Box>
+            </Box>
+
+            {analysis.competitor_notes && (
+              <Box
+                sx={{
+                  p: 2,
+                  mb: 2,
+                  borderRadius: 2,
+                  background: 'rgba(255,255,255,0.5)',
+                  border: '1px dashed #FECACA',
+                }}
+              >
+                <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                  YOUR QUESTION:
+                </Typography>
+                <Typography variant="body2" sx={{ fontStyle: 'italic', mt: 0.5 }}>
+                  "{analysis.competitor_notes}"
+                </Typography>
+              </Box>
+            )}
+
+            {analysis.competitor_analysis && (
+              <Box
+                sx={{
+                  '& h3': {
+                    fontSize: '1rem',
+                    fontWeight: 700,
+                    mt: 2,
+                    mb: 1,
+                    color: '#991B1B',
+                  },
+                  '& p': {
+                    mb: 1.5,
+                    lineHeight: 1.7,
+                  },
+                  '& ul, & ol': {
+                    mb: 1.5,
+                    pl: 2,
+                  },
+                  '& li': {
+                    mb: 0.5,
+                  },
+                  '& strong': {
+                    color: '#7F1D1D',
+                  },
+                }}
+              >
+                <ReactMarkdown>{analysis.competitor_analysis}</ReactMarkdown>
+              </Box>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Action Plan */}
+      {analysis.status === 'completed' && analysis.action_items?.length > 0 && (
+        <ActionPlanCard
+          analysisId={analysis.id}
+          actionItems={analysis.action_items}
+          onUpdate={(updatedItems) => {
+            setAnalysis(prev => ({ ...prev, action_items: updatedItems }));
+          }}
+        />
       )}
 
       {/* Stats Cards */}
