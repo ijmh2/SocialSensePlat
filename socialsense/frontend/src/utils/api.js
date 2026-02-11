@@ -95,11 +95,22 @@ export const analysisApi = {
   getAccountScore: () => api.get('/analysis/account-score'),
   getScoreHistory: () => api.get('/analysis/score-history'),
   updateActionItems: (id, actionItems) => api.patch(`/analysis/${id}/action-items`, { actionItems }),
+  compare: (id1, id2) => api.get(`/analysis/compare/${id1}/${id2}`),
 };
 
 // Analytics endpoints
 export const analyticsApi = {
   getPerformance: () => api.get('/analytics/performance'),
+};
+
+// Scheduled analysis endpoints
+export const scheduledApi = {
+  list: () => api.get('/scheduled'),
+  create: (data) => api.post('/scheduled', data),
+  update: (id, data) => api.patch(`/scheduled/${id}`, data),
+  toggle: (id) => api.patch(`/scheduled/${id}/toggle`),
+  remove: (id) => api.delete(`/scheduled/${id}`),
+  runNow: (id) => api.post(`/scheduled/${id}/run-now`),
 };
 
 export default api;

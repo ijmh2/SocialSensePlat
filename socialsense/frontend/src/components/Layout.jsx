@@ -35,6 +35,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Close,
+  Schedule,
+  CompareArrows,
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -49,6 +51,8 @@ const navItems = [
   { path: '/analyze/comments', label: 'Analysis', icon: CommentIcon },
   { path: '/performance', label: 'Performance', icon: PerformanceIcon },
   { path: '/history', label: 'History', icon: HistoryIcon },
+  { path: '/compare', label: 'Compare', icon: CompareArrows },
+  { path: '/scheduled', label: 'Monitors', icon: Schedule },
   { path: '/tokens', label: 'Buy Tokens', icon: TokenIcon },
 ];
 

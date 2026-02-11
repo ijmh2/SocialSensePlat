@@ -28,6 +28,7 @@ import {
   YouTube,
   VideoLibrary,
   Refresh,
+  CompareArrows,
 } from '@mui/icons-material';
 import TikTokIcon from '../components/icons/TikTokIcon';
 import toast from 'react-hot-toast';
@@ -212,6 +213,15 @@ const History = () => {
         </FormControl>
 
         <Box sx={{ flex: 1 }} />
+
+        <Button
+          variant="outlined"
+          startIcon={<CompareArrows />}
+          onClick={() => navigate('/compare')}
+          sx={{ borderColor: colors.border }}
+        >
+          Compare
+        </Button>
 
         <Button
           variant="outlined"

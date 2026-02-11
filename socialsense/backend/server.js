@@ -13,6 +13,7 @@ import tokensRoutes from './routes/tokens.js';
 import analysisRoutes from './routes/analysis.js';
 import webhooksRoutes from './routes/webhooks.js';
 import analyticsRoutes from './routes/analytics.js';
+import scheduledRoutes from './routes/scheduled.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -58,6 +59,7 @@ app.use('/api/tokens', tokensRoutes);
 app.use('/api/analysis', analysisRoutes);
 app.use('/api/webhooks', webhooksRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/scheduled', scheduledRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

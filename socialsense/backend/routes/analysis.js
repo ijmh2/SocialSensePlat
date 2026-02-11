@@ -256,8 +256,8 @@ router.post('/comments', authenticate, uploadFields, async (req, res) => {
 
     if (deductError || !deductResult?.[0]?.success) {
       // Cleanup uploaded files
-      if (productImageFile) await fs.unlink(productImageFile.path).catch(() => {});
-      if (videoFile) await fs.unlink(videoFile.path).catch(() => {});
+      if (productImageFile) await fs.unlink(productImageFile.path).catch(() => { });
+      if (videoFile) await fs.unlink(videoFile.path).catch(() => { });
       return res.status(402).json({ error: deductResult?.[0]?.message || 'Insufficient tokens' });
     }
 
@@ -282,8 +282,8 @@ router.post('/comments', authenticate, uploadFields, async (req, res) => {
       .single();
 
     if (createError) {
-      if (productImageFile) await fs.unlink(productImageFile.path).catch(() => {});
-      if (videoFile) await fs.unlink(videoFile.path).catch(() => {});
+      if (productImageFile) await fs.unlink(productImageFile.path).catch(() => { });
+      if (videoFile) await fs.unlink(videoFile.path).catch(() => { });
       return res.status(500).json({ error: 'Failed to create analysis record' });
     }
 
@@ -595,13 +595,13 @@ async function extractVideoFrames(videoPath, framesPerSecond = 2) {
           if (frameBuffer.length > 1024) {
             frames.push(frameBuffer.toString('base64'));
           }
-          await fs.unlink(framePath).catch(() => {});
+          await fs.unlink(framePath).catch(() => { });
         }
 
         // Clean up any remaining frames
         for (const file of frameFiles.slice(15)) {
           const framePath = path.join(tempDir, file);
-          await fs.unlink(framePath).catch(() => {});
+          await fs.unlink(framePath).catch(() => { });
         }
 
         if (frames.length === 0) {
@@ -727,14 +727,14 @@ async function processAnalysisJob({
         const audioPath = await extractAudio(videoFilePath);
         console.log('[Video] Audio extracted, transcribing...');
         videoTranscript = await transcribeAudio(audioPath);
-        await fs.unlink(audioPath).catch(() => {});
+        await fs.unlink(audioPath).catch(() => { });
         console.log(`[Video] Transcription complete: ${videoTranscript?.length || 0} chars`);
       } catch (audioErr) {
         console.warn('[Video] Audio transcription failed:', audioErr.message);
       }
 
       // Cleanup video file
-      await fs.unlink(videoFilePath).catch(() => {});
+      await fs.unlink(videoFilePath).catch(() => { });
     }
 
     // 6. Prepare Marketing Context
@@ -801,7 +801,7 @@ async function processAnalysisJob({
     }
 
     // Cleanup
-    if (productImagePath) await fs.unlink(productImagePath).catch(() => {});
+    if (productImagePath) await fs.unlink(productImagePath).catch(() => { });
     if (request_id) setTimeout(() => progressMap.delete(request_id), 60000);
 
   } catch (error) {
@@ -811,10 +811,95 @@ async function processAnalysisJob({
       error_message: error.message
     }).eq('id', analysisId);
 
-    if (productImagePath) await fs.unlink(productImagePath).catch(() => {});
-    if (videoFilePath) await fs.unlink(videoFilePath).catch(() => {});
+    if (productImagePath) await fs.unlink(productImagePath).catch(() => { });
+    if (videoFilePath) await fs.unlink(videoFilePath).catch(() => { });
     if (request_id) setTimeout(() => progressMap.delete(request_id), 30000);
   }
 }
+
+/**
+ * GET /api/analysis/compare/:id1/:id2
+ * Compare two analyses side-by-side
+ */
+router.get('/compare/:id1/:id2', authenticate, async (req, res) => {
+  try {
+    const { id1, id2 } = req.params;
+
+    // Fetch both analyses (must belong to user)
+    const [result1, result2] = await Promise.all([
+      supabaseAdmin
+        .from('analyses')
+        .select('*')
+        .eq('id', id1)
+        .eq('user_id', req.user.id)
+        .single(),
+      supabaseAdmin
+        .from('analyses')
+        .select('*')
+        .eq('id', id2)
+        .eq('user_id', req.user.id)
+        .single(),
+    ]);
+
+    if (result1.error || !result1.data) {
+      return res.status(404).json({ error: 'First analysis not found' });
+    }
+    if (result2.error || !result2.data) {
+      return res.status(404).json({ error: 'Second analysis not found' });
+    }
+
+    const a = result1.data;
+    const b = result2.data;
+
+    // Calculate deltas
+    const parseSentiment = (s) => {
+      if (!s) return { positive: 0, neutral: 0, negative: 0 };
+      if (typeof s === 'string') {
+        try { return JSON.parse(s); } catch { return { positive: 0, neutral: 0, negative: 0 }; }
+      }
+      return s;
+    };
+
+    const sentA = parseSentiment(a.sentiment_scores);
+    const sentB = parseSentiment(b.sentiment_scores);
+
+    const parseArray = (val) => {
+      if (!val) return [];
+      if (Array.isArray(val)) return val;
+      if (typeof val === 'string') {
+        try { return JSON.parse(val); } catch { return []; }
+      }
+      return [];
+    };
+
+    const kwA = parseArray(a.keywords).map(k => k?.word || k).filter(Boolean);
+    const kwB = parseArray(b.keywords).map(k => k?.word || k).filter(Boolean);
+    const sharedKeywords = kwA.filter(k => kwB.includes(k));
+    const uniqueToA = kwA.filter(k => !kwB.includes(k));
+    const uniqueToB = kwB.filter(k => !kwA.includes(k));
+
+    res.json({
+      analysis_a: a,
+      analysis_b: b,
+      comparison: {
+        sentiment_delta: {
+          positive: (sentA.positive || 0) - (sentB.positive || 0),
+          neutral: (sentA.neutral || 0) - (sentB.neutral || 0),
+          negative: (sentA.negative || 0) - (sentB.negative || 0),
+        },
+        score_delta: (a.video_score != null && b.video_score != null)
+          ? a.video_score - b.video_score
+          : null,
+        comment_count_delta: (a.comment_count || 0) - (b.comment_count || 0),
+        shared_keywords: sharedKeywords,
+        unique_to_a: uniqueToA.slice(0, 10),
+        unique_to_b: uniqueToB.slice(0, 10),
+      },
+    });
+  } catch (error) {
+    console.error('Compare error:', error);
+    res.status(500).json({ error: 'Failed to compare analyses' });
+  }
+});
 
 export default router;

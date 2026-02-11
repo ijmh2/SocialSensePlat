@@ -16,6 +16,8 @@ const TokenSuccess = lazy(() => import('./pages/TokenSuccess'));
 const History = lazy(() => import('./pages/History'));
 const AnalysisDetail = lazy(() => import('./pages/AnalysisDetail'));
 const Performance = lazy(() => import('./pages/Performance'));
+const ScheduledAnalyses = lazy(() => import('./pages/ScheduledAnalyses'));
+const Compare = lazy(() => import('./pages/Compare'));
 
 // Loading fallback
 const LoadingFallback = () => (
@@ -164,6 +166,26 @@ function App() {
             <ProtectedRoute>
               <Layout>
                 <AnalysisDetail />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/scheduled"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <ScheduledAnalyses />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/compare"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <Compare />
               </Layout>
             </ProtectedRoute>
           }
