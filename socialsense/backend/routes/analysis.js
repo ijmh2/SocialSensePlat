@@ -307,6 +307,7 @@ router.post('/comments', authenticate, uploadFields, async (req, res) => {
       isCompetitor,
       creatorNotes: creator_notes || null,
       competitorNotes: competitor_notes || null,
+      harshFeedback,
     }).catch(err => console.error('Background Job Failed:', err));
 
     // 6. Return Immediately
@@ -662,7 +663,7 @@ async function extractAudio(videoPath) {
 async function processAnalysisJob({
   analysisId, videoId, platform, commentsToFetch,
   includeText, includeMkt, product_description, productImagePath, videoFilePath, request_id, startTime,
-  isMyVideo = false, isCompetitor = false, creatorNotes = null, competitorNotes = null
+  isMyVideo = false, isCompetitor = false, creatorNotes = null, competitorNotes = null, harshFeedback = false
 }) {
   try {
     // 1. Scrape Comments
