@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import {
   Box,
   Container,
@@ -391,9 +391,35 @@ const Landing = () => {
             borderTop: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
           }}
         >
-          <Typography variant="body2" color="text.secondary">
-            © 2024 SocialSense Platinum. All rights reserved.
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            © 2026 SocialSense Platinum. All rights reserved.
           </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3 }}>
+            <Typography
+              component={RouterLink}
+              to="/terms"
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+                textDecoration: 'none',
+                '&:hover': { color: 'primary.main' },
+              }}
+            >
+              Terms of Service
+            </Typography>
+            <Typography
+              component={RouterLink}
+              to="/privacy"
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+                textDecoration: 'none',
+                '&:hover': { color: 'primary.main' },
+              }}
+            >
+              Privacy Policy
+            </Typography>
+          </Box>
         </Box>
       </Container>
     </Box>

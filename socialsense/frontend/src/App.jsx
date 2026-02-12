@@ -19,6 +19,9 @@ const AnalysisDetail = lazy(() => import('./pages/AnalysisDetail'));
 const Performance = lazy(() => import('./pages/Performance'));
 const ScheduledAnalyses = lazy(() => import('./pages/ScheduledAnalyses'));
 const Compare = lazy(() => import('./pages/Compare'));
+const Settings = lazy(() => import('./pages/Settings'));
+const TermsOfService = lazy(() => import('./pages/TermsOfService'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 
 // Loading fallback
 const LoadingFallback = () => (
@@ -95,6 +98,10 @@ function App() {
             </PublicRoute>
           }
         />
+
+        {/* Legal pages (public, no auth required) */}
+        <Route path="/terms" element={<TermsOfService />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
 
         {/* Protected routes with layout */}
         <Route
@@ -188,6 +195,16 @@ function App() {
             <ProtectedRoute>
               <Layout>
                 <Compare />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <Settings />
               </Layout>
             </ProtectedRoute>
           }

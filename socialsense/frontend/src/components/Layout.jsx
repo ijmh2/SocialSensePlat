@@ -537,11 +537,11 @@ const Layout = ({ children }) => {
           </Typography>
         </Box>
         <Divider sx={{ borderColor: colors.border }} />
-        <MenuItem onClick={handleMenuClose} sx={{ borderRadius: '8px', mx: 1, my: 0.5 }}>
+        <MenuItem onClick={() => { handleMenuClose(); navigate('/settings'); }} sx={{ borderRadius: '8px', mx: 1, my: 0.5 }}>
           <ListItemIcon><PersonIcon fontSize="small" sx={{ color: colors.textMuted }} /></ListItemIcon>
           <Typography sx={{ color: colors.textPrimary }}>Profile</Typography>
         </MenuItem>
-        <MenuItem onClick={handleMenuClose} sx={{ borderRadius: '8px', mx: 1, my: 0.5 }}>
+        <MenuItem onClick={() => { handleMenuClose(); navigate('/settings'); }} sx={{ borderRadius: '8px', mx: 1, my: 0.5 }}>
           <ListItemIcon><SettingsIcon fontSize="small" sx={{ color: colors.textMuted }} /></ListItemIcon>
           <Typography sx={{ color: colors.textPrimary }}>Settings</Typography>
         </MenuItem>

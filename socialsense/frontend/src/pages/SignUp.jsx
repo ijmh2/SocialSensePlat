@@ -368,7 +368,14 @@ const SignUp = () => {
             </Box>
 
             <Typography variant="caption" color="text.secondary" textAlign="center" display="block" sx={{ mt: 2 }}>
-              By signing up, you agree to our Terms of Service and Privacy Policy
+              By signing up, you agree to our{' '}
+              <Link component={RouterLink} to="/terms" sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}>
+                Terms of Service
+              </Link>
+              {' '}and{' '}
+              <Link component={RouterLink} to="/privacy" sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}>
+                Privacy Policy
+              </Link>
             </Typography>
 
             <Typography variant="body2" textAlign="center" sx={{ mt: 3 }}>
