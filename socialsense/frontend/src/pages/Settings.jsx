@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -74,8 +74,16 @@ const Settings = () => {
   const [harshFeedback, setHarshFeedback] = useState(false);
   const [emailNotifications, setEmailNotifications] = useState(true);
 
+  const copyTimeoutRef = useRef(null);
+
   useEffect(() => {
     loadData();
+    return () => {
+      // Cleanup timeout on unmount
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+    };
   }, [profile]);
 
   const loadData = async () => {
@@ -112,7 +120,11 @@ const Settings = () => {
       navigator.clipboard.writeText(referralData.referral_code);
       setCopied(true);
       toast.success('Referral code copied!');
-      setTimeout(() => setCopied(false), 2000);
+      // Clear any existing timeout before setting a new one
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+      copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
     }
   };
 

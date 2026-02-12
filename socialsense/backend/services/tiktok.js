@@ -50,6 +50,7 @@ export async function extractTikTokVideoId(url) {
 
 /**
  * Get estimated comment count for a TikTok video
+ * @returns {Promise<{count: number, estimated: boolean}>}
  */
 export async function getTikTokCommentCount(videoId) {
   try {
@@ -67,18 +68,19 @@ export async function getTikTokCommentCount(videoId) {
       },
       timeout: 15000,
     });
-    
+
     const total = response.data?.total || 0;
     const hasComments = (response.data?.comments?.length || 0) > 0;
-    
+
     if (total === 0 && hasComments) {
-      return 100;
+      return { count: 100, estimated: true };
     }
-    
-    return total;
+
+    return { count: total, estimated: false };
   } catch (error) {
     console.error('TikTok comment count error:', error.message);
-    return 50; // Default estimate when API fails
+    // Return estimated count with flag so callers know it's not accurate
+    return { count: 50, estimated: true, error: error.message };
   }
 }
 

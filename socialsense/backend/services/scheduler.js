@@ -76,8 +76,12 @@ async function runScheduledAnalysis(schedule) {
       videoDetails = await getVideoDetails(videoId);
     } else if (schedule.platform === 'tiktok') {
       videoId = await extractTikTokVideoId(schedule.video_url);
-      const count = await getTikTokCommentCount(videoId);
-      videoDetails = { id: videoId, title: schedule.video_title || 'TikTok Video', commentCount: count };
+      const countResult = await getTikTokCommentCount(videoId);
+      videoDetails = {
+        id: videoId,
+        title: schedule.video_title || 'TikTok Video',
+        commentCount: countResult.count
+      };
     } else {
       throw new Error('Invalid platform');
     }

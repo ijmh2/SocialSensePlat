@@ -1,5 +1,6 @@
 import express from 'express';
 import { authenticate } from '../middleware/auth.js';
+import { validateUUID } from '../middleware/validation.js';
 import { supabaseAdmin } from '../config/supabase.js';
 
 const router = express.Router();
@@ -262,7 +263,7 @@ router.patch('/:id/toggle', authenticate, async (req, res) => {
  * DELETE /api/scheduled/:id
  * Delete a scheduled analysis
  */
-router.delete('/:id', authenticate, async (req, res) => {
+router.delete('/:id', authenticate, validateUUID('id'), async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -289,7 +290,7 @@ router.delete('/:id', authenticate, async (req, res) => {
  * Manually trigger a scheduled analysis immediately
  * (This re-uses the existing analysis flow - deducts tokens, creates analysis, etc.)
  */
-router.post('/:id/run-now', authenticate, async (req, res) => {
+router.post('/:id/run-now', authenticate, validateUUID('id'), async (req, res) => {
     try {
         const { id } = req.params;
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Card,
@@ -27,9 +27,16 @@ const ReferralCard = () => {
   const [loading, setLoading] = useState(true);
   const [referralData, setReferralData] = useState(null);
   const [copied, setCopied] = useState(false);
+  const copyTimeoutRef = useRef(null);
 
   useEffect(() => {
     loadReferralData();
+    return () => {
+      // Cleanup timeout on unmount
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+    };
   }, []);
 
   const loadReferralData = async () => {
@@ -48,7 +55,11 @@ const ReferralCard = () => {
       navigator.clipboard.writeText(referralData.referral_code);
       setCopied(true);
       toast.success('Referral code copied!');
-      setTimeout(() => setCopied(false), 2000);
+      // Clear any existing timeout before setting a new one
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+      copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
     }
   };
 

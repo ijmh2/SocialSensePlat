@@ -182,33 +182,8 @@ router.post('/apply-referral', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'You cannot use your own referral code' });
     }
 
-    // Award tokens to referrer
-    const { error: referrerTokenError } = await supabaseAdmin.rpc('add_tokens', {
-      p_user_id: referrer.id,
-      p_amount: REFERRAL_BONUS,
-      p_type: 'referral_bonus',
-      p_description: 'Referral bonus - new user signed up with your code',
-    });
-
-    if (referrerTokenError) {
-      console.error('Failed to award referrer tokens:', referrerTokenError);
-      return res.status(500).json({ error: 'Failed to process referral' });
-    }
-
-    // Award tokens to referred user (current user)
-    const { error: referredTokenError } = await supabaseAdmin.rpc('add_tokens', {
-      p_user_id: req.user.id,
-      p_amount: REFERRAL_BONUS,
-      p_type: 'referral_bonus',
-      p_description: `Referral bonus - signed up with code ${referral_code}`,
-    });
-
-    if (referredTokenError) {
-      console.error('Failed to award referred user tokens:', referredTokenError);
-      // Note: Referrer already got tokens, but we continue
-    }
-
-    // Record the referral
+    // Record the referral FIRST to prevent duplicate applications
+    // This acts as the lock since referred_id has a unique constraint
     const { error: bonusError } = await supabaseAdmin
       .from('referral_bonuses')
       .insert({
@@ -219,19 +194,47 @@ router.post('/apply-referral', authenticate, async (req, res) => {
 
     if (bonusError) {
       console.error('Failed to record referral bonus:', bonusError);
+      // If this fails due to unique constraint, user was already referred
+      if (bonusError.code === '23505') {
+        return res.status(400).json({ error: 'You have already used a referral code' });
+      }
+      return res.status(500).json({ error: 'Failed to process referral' });
     }
 
-    // Update referrer's count
-    await supabaseAdmin
-      .from('profiles')
-      .update({ referral_count: (referrer.referral_count || 0) + 1 })
-      .eq('id', referrer.id);
+    // Now award tokens - both operations should succeed since referral is recorded
+    const [referrerResult, referredResult] = await Promise.all([
+      supabaseAdmin.rpc('add_tokens', {
+        p_user_id: referrer.id,
+        p_amount: REFERRAL_BONUS,
+        p_type: 'referral_bonus',
+        p_description: 'Referral bonus - new user signed up with your code',
+      }),
+      supabaseAdmin.rpc('add_tokens', {
+        p_user_id: req.user.id,
+        p_amount: REFERRAL_BONUS,
+        p_type: 'referral_bonus',
+        p_description: `Referral bonus - signed up with code ${referral_code}`,
+      }),
+    ]);
 
-    // Update referred user's referred_by field
-    await supabaseAdmin
-      .from('profiles')
-      .update({ referred_by: referrer.id })
-      .eq('id', req.user.id);
+    if (referrerResult.error) {
+      console.error('Failed to award referrer tokens:', referrerResult.error);
+    }
+    if (referredResult.error) {
+      console.error('Failed to award referred user tokens:', referredResult.error);
+    }
+
+    // Update referrer's count and referred user's referred_by field in parallel
+    await Promise.all([
+      supabaseAdmin
+        .from('profiles')
+        .update({ referral_count: (referrer.referral_count || 0) + 1 })
+        .eq('id', referrer.id),
+      supabaseAdmin
+        .from('profiles')
+        .update({ referred_by: referrer.id })
+        .eq('id', req.user.id),
+    ]);
 
     res.json({
       success: true,

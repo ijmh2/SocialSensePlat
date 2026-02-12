@@ -90,16 +90,18 @@ const AnalysisDetail = () => {
 
   useEffect(() => {
     loadAnalysis();
+  }, [id]);
 
-    // Poll for updates if processing
+  // Separate effect for polling - only runs when status is processing
+  useEffect(() => {
+    if (analysis?.status !== 'processing') return;
+
     const interval = setInterval(() => {
-      if (analysis && analysis.status === 'processing') {
-        loadAnalysis(true); // silent update
-      }
+      loadAnalysis(true); // silent update
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [id, analysis?.status]);
+  }, [analysis?.status]);
 
   const loadAnalysis = async (silent = false) => {
     try {
@@ -123,6 +125,7 @@ const AnalysisDetail = () => {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      window.URL.revokeObjectURL(url); // Prevent memory leak
       toast.success('CSV exported successfully');
     } catch (err) {
       toast.error('Failed to export CSV');

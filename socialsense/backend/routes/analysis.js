@@ -7,6 +7,7 @@ import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 
 import { authenticate } from '../middleware/auth.js';
+import { validateUUID } from '../middleware/validation.js';
 import { supabaseAdmin } from '../config/supabase.js';
 import { TOKEN_COSTS } from '../config/stripe.js';
 
@@ -81,11 +82,13 @@ router.post('/estimate', authenticate, async (req, res) => {
     } else if (platform === 'tiktok') {
       try {
         const videoId = await extractTikTokVideoId(url);
-        commentCount = await getTikTokCommentCount(videoId);
+        const countResult = await getTikTokCommentCount(videoId);
+        commentCount = countResult.count;
         videoDetails = {
           id: videoId,
           title: 'TikTok Video',
-          commentCount
+          commentCount,
+          commentCountEstimated: countResult.estimated
         };
       } catch (ttError) {
         clearTimeout(timeout);
@@ -218,8 +221,13 @@ router.post('/comments', authenticate, uploadFields, async (req, res) => {
     } else if (platform === 'tiktok') {
       try {
         videoId = await extractTikTokVideoId(url);
-        const count = await getTikTokCommentCount(videoId);
-        videoDetails = { id: videoId, title: 'TikTok Video', commentCount: count };
+        const countResult = await getTikTokCommentCount(videoId);
+        videoDetails = {
+          id: videoId,
+          title: 'TikTok Video',
+          commentCount: countResult.count,
+          commentCountEstimated: countResult.estimated
+        };
       } catch (e) {
         return res.status(400).json({ error: e.message || 'Failed to fetch TikTok video' });
       }
@@ -436,7 +444,7 @@ router.get('/score-history', authenticate, async (req, res) => {
 /**
  * GET /api/analysis/:id
  */
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', authenticate, validateUUID('id'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -462,7 +470,7 @@ router.get('/:id', authenticate, async (req, res) => {
  * PATCH /api/analysis/:id/action-items
  * Update action item completion status
  */
-router.patch('/:id/action-items', authenticate, async (req, res) => {
+router.patch('/:id/action-items', authenticate, validateUUID('id'), async (req, res) => {
   try {
     const { id } = req.params;
     const { actionItems } = req.body;
@@ -504,7 +512,7 @@ router.patch('/:id/action-items', authenticate, async (req, res) => {
 /**
  * GET /api/analysis/:id/export
  */
-router.get('/:id/export', authenticate, async (req, res) => {
+router.get('/:id/export', authenticate, validateUUID('id'), async (req, res) => {
   try {
     const { id } = req.params;
 

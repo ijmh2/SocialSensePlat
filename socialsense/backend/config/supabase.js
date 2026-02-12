@@ -4,20 +4,16 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Better error messages for debugging
+// Validate required environment variables
 if (!supabaseUrl) {
   console.error('❌ SUPABASE_URL is not set!');
-  console.error('Available env vars:', Object.keys(process.env).filter(k => k.includes('SUPA')));
   process.exit(1);
 }
 
 if (!supabaseServiceKey) {
   console.error('❌ SUPABASE_SERVICE_KEY is not set!');
-  console.error('Available env vars:', Object.keys(process.env).filter(k => k.includes('SUPA')));
   process.exit(1);
 }
-
-console.log('✅ Supabase configured:', supabaseUrl);
 
 // Admin client (bypasses RLS - use carefully!)
 export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {

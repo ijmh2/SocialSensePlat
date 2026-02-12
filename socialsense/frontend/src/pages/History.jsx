@@ -96,6 +96,7 @@ const History = () => {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      window.URL.revokeObjectURL(url); // Prevent memory leak
       toast.success('CSV exported successfully');
     } catch (error) {
       toast.error('Failed to export CSV');
