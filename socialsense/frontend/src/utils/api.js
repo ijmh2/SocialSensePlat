@@ -61,6 +61,9 @@ export const authApi = {
   updateProfile: (data) => api.put('/auth/profile', data),
   getTokenBalance: () => api.get('/auth/token-balance'),
   getTransactions: (params) => api.get('/auth/transactions', { params }),
+  getReferral: () => api.get('/auth/referral'),
+  applyReferral: (code) => api.post('/auth/apply-referral', { referral_code: code }),
+  checkReferral: (code) => api.get(`/auth/check-referral/${code}`),
 };
 
 // Tokens endpoints

@@ -21,6 +21,7 @@ import StatCard from '../components/ui/StatCard';
 import AccountScoreCard from '../components/dashboard/AccountScoreCard';
 import RecentAnalysesTable from '../components/dashboard/RecentAnalysesTable';
 import QuickActions from '../components/dashboard/QuickActions';
+import ReferralCard from '../components/ReferralCard';
 
 const MotionBox = motion(Box);
 
@@ -344,8 +345,18 @@ const Dashboard = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.6 }}
+        sx={{ mb: 4 }}
       >
         <QuickActions />
+      </MotionBox>
+
+      {/* Referral Card */}
+      <MotionBox
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.7 }}
+      >
+        <ReferralCard />
       </MotionBox>
 
       {/* Low Token Warning */}

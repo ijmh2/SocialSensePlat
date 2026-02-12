@@ -179,13 +179,16 @@ router.post('/comments', authenticate, uploadFields, async (req, res) => {
       is_competitor = false,
       creator_notes = '',
       competitor_notes = '',
+      harsh_feedback = false,
     } = req.body;
 
     // Convert string booleans to actual booleans
     const isMyVideo = is_my_video === 'true' || is_my_video === true;
     const isCompetitor = is_competitor === 'true' || is_competitor === true;
+    const harshFeedback = harsh_feedback === 'true' || harsh_feedback === true;
     console.log('[Analysis] is_my_video raw:', is_my_video, 'converted:', isMyVideo);
     console.log('[Analysis] is_competitor raw:', is_competitor, 'converted:', isCompetitor);
+    console.log('[Analysis] harsh_feedback raw:', harsh_feedback, 'converted:', harshFeedback);
     console.log('[Analysis] creator_notes:', creator_notes);
     console.log('[Analysis] competitor_notes:', competitor_notes);
 
@@ -755,7 +758,7 @@ async function processAnalysisJob({
       if (request_id) progressMap.set(request_id, { stage: 'analyzing_ai', count: rawComments.length, percent: 88 });
 
       try {
-        analysisResult = await analyzeComments(processedComments, platform, marketingContext, videoTranscript, videoFrames, isMyVideo, creatorNotes, isCompetitor, competitorNotes);
+        analysisResult = await analyzeComments(processedComments, platform, marketingContext, videoTranscript, videoFrames, isMyVideo, creatorNotes, isCompetitor, competitorNotes, harshFeedback);
       } catch (aiErr) {
         console.error('AI Error:', aiErr);
         const fallback = extractThemesAndKeywords(processedComments.map(c => c.clean_text));

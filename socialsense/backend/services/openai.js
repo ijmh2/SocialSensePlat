@@ -76,7 +76,7 @@ function extractPriorityImprovement(summary) {
  * Extract notes assessment from AI response
  */
 function extractNotesAssessment(summary) {
-  const match = summary.match(/## CREATOR SELF-ASSESSMENT CHECK[\s\S]*?((?:Accurate|Partially Accurate|Delusional)[^\n]*)/i);
+  const match = summary.match(/## CREATOR SELF-ASSESSMENT CHECK[\s\S]*?((?:Accurate|Partially Accurate|Delusional|Needs Recalibration)[^\n]*)/i);
   return match ? match[1].trim() : null;
 }
 
@@ -221,13 +221,14 @@ function extractActionItems(summary) {
 /**
  * Analyze comments and generate insights
  * Optionally includes video transcript and frames for unified analysis
- * @param {boolean} isMyVideo - If true, enables harsh scoring mode
+ * @param {boolean} isMyVideo - If true, enables scoring mode
  * @param {string} creatorNotes - Creator's self-assessment before seeing results
  * @param {boolean} isCompetitor - If true, enables competitor analysis mode
  * @param {string} competitorNotes - What the user wants to learn from competitor
+ * @param {boolean} harshFeedback - If true, enables brutally honest feedback mode
  */
-export async function analyzeComments(comments, platform, marketingContext = null, videoTranscript = null, videoFrames = null, isMyVideo = false, creatorNotes = null, isCompetitor = false, competitorNotes = null) {
-  console.log('[OpenAI] analyzeComments called with isMyVideo:', isMyVideo, 'isCompetitor:', isCompetitor, 'creatorNotes:', creatorNotes ? 'provided' : 'none', 'competitorNotes:', competitorNotes ? 'provided' : 'none');
+export async function analyzeComments(comments, platform, marketingContext = null, videoTranscript = null, videoFrames = null, isMyVideo = false, creatorNotes = null, isCompetitor = false, competitorNotes = null, harshFeedback = false) {
+  console.log('[OpenAI] analyzeComments called with isMyVideo:', isMyVideo, 'isCompetitor:', isCompetitor, 'harshFeedback:', harshFeedback, 'creatorNotes:', creatorNotes ? 'provided' : 'none', 'competitorNotes:', competitorNotes ? 'provided' : 'none');
 
   if (!comments || comments.length === 0) {
     return {
@@ -279,8 +280,9 @@ export async function analyzeComments(comments, platform, marketingContext = nul
     .slice(0, 20)
     .map(c => c.clean_text);
 
-  // Build prompt with harsh expert persona
-  const expertPreamble = `You are a brutally honest content strategy expert with 15+ years experience.
+  // Build prompt with conditional persona based on harshFeedback setting
+  const expertPreamble = harshFeedback
+    ? `You are a brutally honest content strategy expert with 15+ years experience.
 You do NOT sugarcoat feedback. You do NOT agree with creators just to be nice.
 Your job is to deliver the truth that creators NEED to hear, not what they WANT to hear.
 
@@ -290,7 +292,20 @@ CRITICAL RULES:
 - Be specific with criticism - vague feedback is useless
 - If something is mediocre, say it's mediocre
 - Back every claim with evidence from comments
-- Assume the creator wants to improve, not be coddled
+- Assume the creator wants tough love, not comfort
+
+`
+    : `You are a supportive content strategy coach with 15+ years experience.
+Your goal is to help creators improve while maintaining their confidence and motivation.
+
+TONE GUIDELINES:
+- Lead with what's working before addressing areas for improvement
+- Frame criticism as "opportunities" or "areas to explore" rather than failures
+- Be specific and actionable, but deliver feedback with kindness
+- Acknowledge effort and progress where visible
+- Use phrases like "consider" and "you might try" instead of "you must"
+- Back every suggestion with evidence from comments
+- Maintain an encouraging, constructive tone throughout
 
 `;
 
@@ -442,6 +457,14 @@ Score based on comment evidence:
 
   // Add notes reality check if creator provided notes
   if (creatorNotes && creatorNotes.trim()) {
+    const selfAwarenessRating = harshFeedback
+      ? 'Accurate / Partially Accurate / Delusional'
+      : 'Accurate / Partially Accurate / Needs Recalibration';
+
+    const directnessNote = harshFeedback
+      ? 'Be direct. If the creator is wrong, tell them clearly with evidence from the comments.'
+      : 'Be honest but constructive. If the creator\'s perception differs from reality, explain the gap with evidence and suggest how they can recalibrate their understanding.';
+
     prompt += `
 
 ---
@@ -451,11 +474,11 @@ The creator believes: "${creatorNotes}"
 
 Compare their self-assessment against actual audience reactions:
 - Where is the creator RIGHT about what worked?
-- Where is the creator WRONG or deluding themselves?
-- What blind spots does the creator have?
-- Rate their self-awareness: Accurate / Partially Accurate / Delusional
+- Where is the creator's perception different from audience reality?
+- What blind spots might the creator have?
+- Rate their self-awareness: ${selfAwarenessRating}
 
-Be direct. If the creator is wrong, tell them clearly with evidence from the comments.`;
+${directnessNote}`;
   }
 
   // Add competitor analysis section if this is a competitor video

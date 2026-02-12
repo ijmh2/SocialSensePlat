@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Box,
   Container,
@@ -14,6 +14,7 @@ import {
   InputAdornment,
   IconButton,
   Chip,
+  Collapse,
 } from '@mui/material';
 import {
   Google as GoogleIcon,
@@ -24,17 +25,20 @@ import {
   Person,
   AutoGraph,
   CheckCircle,
+  CardGiftcard,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 
 import { useAuth } from '../contexts/AuthContext';
+import { authApi } from '../utils/api';
 
 const MotionBox = motion(Box);
 
 const SignUp = () => {
   const theme = useTheme();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { signUp, signInWithGoogle } = useAuth();
 
   const [fullName, setFullName] = useState('');
@@ -43,6 +47,31 @@ const SignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Referral code state
+  const [referralCode, setReferralCode] = useState(searchParams.get('ref') || '');
+  const [referralValid, setReferralValid] = useState(null);
+  const [referrerName, setReferrerName] = useState('');
+  const [showReferralField, setShowReferralField] = useState(!!searchParams.get('ref'));
+
+  // Check referral code validity
+  useEffect(() => {
+    const checkCode = async () => {
+      if (referralCode.length >= 6) {
+        try {
+          const { data } = await authApi.checkReferral(referralCode);
+          setReferralValid(data.valid);
+          setReferrerName(data.referrer_name || '');
+        } catch {
+          setReferralValid(false);
+        }
+      } else {
+        setReferralValid(null);
+      }
+    };
+    const timer = setTimeout(checkCode, 300);
+    return () => clearTimeout(timer);
+  }, [referralCode]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -57,6 +86,18 @@ const SignUp = () => {
 
     try {
       await signUp(email, password, fullName);
+
+      // Apply referral code if valid
+      if (referralCode && referralValid) {
+        try {
+          await authApi.applyReferral(referralCode);
+          toast.success('Referral bonus applied! You received 10 extra tokens.');
+        } catch (refErr) {
+          console.error('Referral apply error:', refErr);
+          // Don't block signup if referral fails
+        }
+      }
+
       toast.success('Account created! Check your email for verification.');
       navigate('/dashboard');
     } catch (err) {
@@ -242,7 +283,7 @@ const SignUp = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 helperText="Must be at least 6 characters"
-                sx={{ mb: 3 }}
+                sx={{ mb: 2 }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -262,6 +303,54 @@ const SignUp = () => {
                 }}
               />
 
+              {/* Referral Code */}
+              {!showReferralField ? (
+                <Button
+                  size="small"
+                  onClick={() => setShowReferralField(true)}
+                  sx={{ mb: 2, color: 'text.secondary' }}
+                  startIcon={<CardGiftcard />}
+                >
+                  Have a referral code?
+                </Button>
+              ) : (
+                <Collapse in={showReferralField}>
+                  <TextField
+                    fullWidth
+                    label="Referral Code (optional)"
+                    value={referralCode}
+                    onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                    placeholder="XXXXXX"
+                    sx={{ mb: 2 }}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <CardGiftcard sx={{ color: referralValid ? 'success.main' : 'text.secondary' }} />
+                        </InputAdornment>
+                      ),
+                      endAdornment: referralValid !== null && (
+                        <InputAdornment position="end">
+                          {referralValid ? (
+                            <CheckCircle sx={{ color: 'success.main' }} />
+                          ) : (
+                            <Typography variant="caption" color="error">Invalid</Typography>
+                          )}
+                        </InputAdornment>
+                      ),
+                    }}
+                    helperText={
+                      referralValid
+                        ? `Referred by ${referrerName}! You'll both get 10 bonus tokens.`
+                        : referralCode.length >= 6 && referralValid === false
+                          ? 'This code is not valid'
+                          : 'Enter a 6-character code from a friend'
+                    }
+                    error={referralCode.length >= 6 && referralValid === false}
+                    color={referralValid ? 'success' : undefined}
+                  />
+                </Collapse>
+              )}
+
               <Button
                 type="submit"
                 fullWidth
@@ -271,6 +360,7 @@ const SignUp = () => {
                 sx={{
                   py: 1.5,
                   fontSize: '1rem',
+                  mt: 1,
                 }}
               >
                 {loading ? 'Creating account...' : 'Create Account'}

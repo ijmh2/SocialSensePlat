@@ -62,6 +62,7 @@ const CommentAnalysis = () => {
   const [isCompetitor, setIsCompetitor] = useState(false);
   const [creatorNotes, setCreatorNotes] = useState('');
   const [competitorNotes, setCompetitorNotes] = useState('');
+  const [harshFeedback, setHarshFeedback] = useState(false);
 
   const [estimating, setEstimating] = useState(false);
   const [estimate, setEstimate] = useState(null);
@@ -214,6 +215,7 @@ const CommentAnalysis = () => {
       // Account score fields
       formData.append('is_my_video', isMyVideo);
       formData.append('is_competitor', isCompetitor);
+      formData.append('harsh_feedback', harshFeedback);
       if (isMyVideo && creatorNotes.trim()) {
         formData.append('creator_notes', creatorNotes.trim());
       }
@@ -653,6 +655,32 @@ const CommentAnalysis = () => {
                 <strong>Video attached:</strong> {videoFile.name} ({(videoFile.size / (1024 * 1024)).toFixed(1)} MB) — frames and audio will be analyzed
               </Alert>
             )}
+
+            <Divider sx={{ my: 3 }} />
+
+            {/* Feedback Tone */}
+            <Box sx={{ mb: 3 }}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={harshFeedback}
+                    onChange={(e) => setHarshFeedback(e.target.checked)}
+                    sx={{ color: '#E53E3E', '&.Mui-checked': { color: '#E53E3E' } }}
+                  />
+                }
+                label={
+                  <Box>
+                    <Typography variant="body1" sx={{ color: colors.textPrimary }}>
+                      Harsh Feedback Mode
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: colors.textSecondary }}>
+                      Enable brutally honest criticism — not for the faint-hearted
+                    </Typography>
+                  </Box>
+                }
+                sx={{ display: 'flex', alignItems: 'flex-start' }}
+              />
+            </Box>
 
             <Box sx={{ display: 'flex', gap: 2 }}>
               <Button
