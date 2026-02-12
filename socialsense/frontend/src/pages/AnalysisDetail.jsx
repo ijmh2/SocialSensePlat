@@ -373,6 +373,21 @@ const AnalysisDetail = () => {
         {analysis.status === 'completed' && (
           <Box sx={{ display: 'flex', gap: 1 }}>
             <Button
+              variant="outlined"
+              startIcon={<CompareArrows />}
+              onClick={() => navigate(`/compare?a=${id}`)}
+              sx={{
+                borderColor: theme.palette.primary.main,
+                color: theme.palette.primary.main,
+                '&:hover': {
+                  borderColor: theme.palette.primary.dark,
+                  background: alpha(theme.palette.primary.main, 0.05),
+                },
+              }}
+            >
+              Compare
+            </Button>
+            <Button
               variant="contained"
               startIcon={<PictureAsPdf />}
               onClick={handlePdfExport}

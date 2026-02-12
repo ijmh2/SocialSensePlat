@@ -15,6 +15,9 @@ import webhooksRoutes from './routes/webhooks.js';
 import analyticsRoutes from './routes/analytics.js';
 import scheduledRoutes from './routes/scheduled.js';
 
+// Import scheduler
+import { startScheduler } from './services/scheduler.js';
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -26,9 +29,11 @@ console.log('✅ Trust proxy enabled (1 hop)');
 // Security middleware
 app.use(helmet());
 
-// CORS configuration
+// CORS configuration - reject unknown origins in production
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: process.env.FRONTEND_URL || (
+    process.env.NODE_ENV === 'production' ? false : 'http://localhost:5173'
+  ),
   credentials: true,
 }));
 
@@ -78,6 +83,9 @@ app.use((req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 SocialSense API running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+
+  // Start the scheduled analysis processor
+  startScheduler();
 });
 
 export default app;

@@ -4,6 +4,7 @@ import { Box, CircularProgress } from '@mui/material';
 
 import { useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Lazy load pages for better performance
 const Landing = lazy(() => import('./pages/Landing'));
@@ -66,8 +67,9 @@ const PublicRoute = ({ children }) => {
 
 function App() {
   return (
-    <Suspense fallback={<LoadingFallback />}>
-      <Routes>
+    <ErrorBoundary>
+      <Suspense fallback={<LoadingFallback />}>
+        <Routes>
         {/* Public routes */}
         <Route
           path="/"
@@ -195,6 +197,7 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
+    </ErrorBoundary>
   );
 }
 

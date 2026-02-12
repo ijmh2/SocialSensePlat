@@ -339,20 +339,20 @@ const Compare = () => {
     const kwA = parseArray(a.keywords).filter(k => k && typeof k === 'object').slice(0, 8);
     const kwB = parseArray(b.keywords).filter(k => k && typeof k === 'object').slice(0, 8);
 
-    // Sentiment comparison bar chart data
+    // Sentiment comparison bar chart data (use percentage values, not raw counts)
     const sentimentChartData = [
-        { name: 'Positive', A: sentA.positive || 0, B: sentB.positive || 0 },
-        { name: 'Neutral', A: sentA.neutral || 0, B: sentB.neutral || 0 },
-        { name: 'Negative', A: sentA.negative || 0, B: sentB.negative || 0 },
+        { name: 'Positive', A: sentA.positive_pct || 0, B: sentB.positive_pct || 0 },
+        { name: 'Neutral', A: sentA.neutral_pct || 0, B: sentB.neutral_pct || 0 },
+        { name: 'Negative', A: sentA.negative_pct || 0, B: sentB.negative_pct || 0 },
     ];
 
-    // Radar chart for scores + sentiment comparison
+    // Radar chart for scores + sentiment comparison (use percentage values)
     const radarData = [
-        { subject: 'Positive %', A: sentA.positive || 0, B: sentB.positive || 0 },
+        { subject: 'Positive %', A: sentA.positive_pct || 0, B: sentB.positive_pct || 0 },
         { subject: 'Comments', A: Math.min(100, ((a.comment_count || 0) / Math.max(a.comment_count || 1, b.comment_count || 1)) * 100), B: Math.min(100, ((b.comment_count || 0) / Math.max(a.comment_count || 1, b.comment_count || 1)) * 100) },
         { subject: 'Keywords', A: Math.min(100, (parseArray(a.keywords).length / Math.max(parseArray(a.keywords).length, parseArray(b.keywords).length, 1)) * 100), B: Math.min(100, (parseArray(b.keywords).length / Math.max(parseArray(a.keywords).length, parseArray(b.keywords).length, 1)) * 100) },
         { subject: 'Themes', A: Math.min(100, (parseArray(a.themes).length / Math.max(parseArray(a.themes).length, parseArray(b.themes).length, 1)) * 100), B: Math.min(100, (parseArray(b.themes).length / Math.max(parseArray(a.themes).length, parseArray(b.themes).length, 1)) * 100) },
-        { subject: 'Negative %', A: sentA.negative || 0, B: sentB.negative || 0 },
+        { subject: 'Negative %', A: sentA.negative_pct || 0, B: sentB.negative_pct || 0 },
     ];
 
     if (a.video_score != null || b.video_score != null) {
