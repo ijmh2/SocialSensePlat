@@ -17,6 +17,11 @@ const colors = {
   primaryLight: '#3B82F6',
   primaryGlow: 'rgba(30, 64, 175, 0.1)',
 
+  // Secondary Accent (Teal)
+  secondary: '#38B2AC',
+  secondaryLight: '#4FD1C5',
+  secondaryDark: '#2C7A7B',
+
   // Status Colors
   success: '#16A34A',
   error: '#DC2626',
