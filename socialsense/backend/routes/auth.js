@@ -206,13 +206,13 @@ router.post('/apply-referral', authenticate, async (req, res) => {
       supabaseAdmin.rpc('add_tokens', {
         p_user_id: referrer.id,
         p_amount: REFERRAL_BONUS,
-        p_type: 'referral_bonus',
+        p_stripe_session_id: null,  // No Stripe session for referral bonus
         p_description: 'Referral bonus - new user signed up with your code',
       }),
       supabaseAdmin.rpc('add_tokens', {
         p_user_id: req.user.id,
         p_amount: REFERRAL_BONUS,
-        p_type: 'referral_bonus',
+        p_stripe_session_id: null,  // No Stripe session for referral bonus
         p_description: `Referral bonus - signed up with code ${referral_code}`,
       }),
     ]);
