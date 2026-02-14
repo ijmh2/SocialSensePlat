@@ -222,34 +222,41 @@ router.get('/verify-session/:sessionId', authenticate, async (req, res) => {
     }
     
     // Fallback: Manual token addition if RPC fails
+    // Use optimistic locking with version check to prevent race conditions
+
+    // First, check if transaction was already recorded (idempotency)
+    const { data: existingTx } = await supabaseAdmin
+      .from('token_transactions')
+      .select('id, balance_after')
+      .eq('stripe_session_id', sessionId)
+      .single();
+
+    if (existingTx) {
+      console.log('Transaction already exists (race condition avoided), returning existing');
+      return res.json({
+        success: true,
+        tokens_added: tokensToAdd,
+        new_balance: existingTx.balance_after,
+        already_processed: true,
+      });
+    }
+
     const { data: profile } = await supabaseAdmin
       .from('profiles')
-      .select('token_balance, total_tokens_purchased')
+      .select('token_balance, total_tokens_purchased, updated_at')
       .eq('id', userId)
       .single();
-    
+
     if (!profile) {
       return res.status(404).json({ error: 'User profile not found' });
     }
-    
+
     const newBalance = (profile.token_balance || 0) + tokensToAdd;
-    
-    // Update profile
-    const { error: updateError } = await supabaseAdmin
-      .from('profiles')
-      .update({ 
-        token_balance: newBalance,
-        total_tokens_purchased: (profile.total_tokens_purchased || 0) + tokensToAdd 
-      })
-      .eq('id', userId);
-    
-    if (updateError) {
-      console.error('Profile update error:', updateError);
-      return res.status(500).json({ error: 'Failed to update token balance' });
-    }
-    
-    // Record transaction
-    await supabaseAdmin.from('token_transactions').insert({
+    const originalUpdatedAt = profile.updated_at;
+
+    // Record transaction FIRST with the expected new balance
+    // This ensures we have a record even if the update fails
+    const { error: txError } = await supabaseAdmin.from('token_transactions').insert({
       user_id: userId,
       transaction_type: 'purchase',
       amount: tokensToAdd,
@@ -257,13 +264,62 @@ router.get('/verify-session/:sessionId', authenticate, async (req, res) => {
       stripe_session_id: sessionId,
       description: `Purchased ${tokensToAdd} tokens`,
     });
-    
-    console.log('Tokens added via fallback, new balance:', newBalance);
-    
+
+    if (txError) {
+      // If unique constraint violation, transaction was already processed
+      if (txError.code === '23505') {
+        console.log('Transaction already recorded (concurrent request)');
+        const { data: existingProfile } = await supabaseAdmin
+          .from('profiles')
+          .select('token_balance')
+          .eq('id', userId)
+          .single();
+        return res.json({
+          success: true,
+          tokens_added: tokensToAdd,
+          new_balance: existingProfile?.token_balance || newBalance,
+          already_processed: true,
+        });
+      }
+      console.error('Transaction insert error:', txError);
+      return res.status(500).json({ error: 'Failed to record transaction' });
+    }
+
+    // Update profile with optimistic locking (check updated_at hasn't changed)
+    const { data: updatedProfile, error: updateError } = await supabaseAdmin
+      .from('profiles')
+      .update({
+        token_balance: newBalance,
+        total_tokens_purchased: (profile.total_tokens_purchased || 0) + tokensToAdd
+      })
+      .eq('id', userId)
+      .eq('updated_at', originalUpdatedAt) // Optimistic lock
+      .select('token_balance')
+      .single();
+
+    if (updateError || !updatedProfile) {
+      // Profile was modified concurrently - get fresh balance
+      console.warn('Concurrent profile update detected, fetching fresh balance');
+      const { data: freshProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('token_balance')
+        .eq('id', userId)
+        .single();
+
+      return res.json({
+        success: true,
+        tokens_added: tokensToAdd,
+        new_balance: freshProfile?.token_balance || newBalance,
+        note: 'Balance may reflect concurrent updates',
+      });
+    }
+
+    console.log('Tokens added via fallback, new balance:', updatedProfile.token_balance);
+
     res.json({
       success: true,
       tokens_added: tokensToAdd,
-      new_balance: newBalance,
+      new_balance: updatedProfile.token_balance,
     });
   } catch (error) {
     console.error('Verify session error:', error);

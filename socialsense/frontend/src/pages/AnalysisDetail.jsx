@@ -101,7 +101,8 @@ const AnalysisDetail = () => {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [analysis?.status]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analysis?.status, id]);
 
   const loadAnalysis = async (silent = false) => {
     try {

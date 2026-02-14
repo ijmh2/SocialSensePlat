@@ -1,5 +1,6 @@
 import express from 'express';
 import multer from 'multer';
+import rateLimit from 'express-rate-limit';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
@@ -10,6 +11,15 @@ import { authenticate } from '../middleware/auth.js';
 import { validateUUID } from '../middleware/validation.js';
 import { supabaseAdmin } from '../config/supabase.js';
 import { TOKEN_COSTS } from '../config/stripe.js';
+
+// Rate limiter for file uploads (stricter than general API)
+const uploadRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // Max 10 uploads per 15 minutes per user
+  keyGenerator: (req) => req.user?.id || req.ip, // Rate limit by user ID if available
+  message: { error: 'Too many uploads. Please try again later.' },
+  skip: (req) => !req.files || Object.keys(req.files).length === 0, // Only apply when files are present
+});
 
 import { extractVideoId, getVideoDetails, scrapeYouTubeComments } from '../services/youtube.js';
 import { extractTikTokVideoId, getTikTokCommentCount, scrapeTikTokComments } from '../services/tiktok.js';
@@ -153,8 +163,66 @@ router.post('/estimate', authenticate, async (req, res) => {
   }
 });
 
-// In-memory progress tracking
-const progressMap = new Map();
+// In-memory progress tracking with TTL and max size
+const PROGRESS_MAX_SIZE = 1000; // Maximum entries
+const PROGRESS_TTL_MS = 10 * 60 * 1000; // 10 minutes TTL
+
+class ProgressMap {
+  constructor(maxSize = PROGRESS_MAX_SIZE, ttlMs = PROGRESS_TTL_MS) {
+    this.map = new Map();
+    this.timestamps = new Map();
+    this.maxSize = maxSize;
+    this.ttlMs = ttlMs;
+
+    // Cleanup expired entries every minute
+    setInterval(() => this.cleanup(), 60 * 1000);
+  }
+
+  set(key, value) {
+    // If at max size, remove oldest entry
+    if (this.map.size >= this.maxSize && !this.map.has(key)) {
+      const oldestKey = this.timestamps.entries().next().value?.[0];
+      if (oldestKey) {
+        this.map.delete(oldestKey);
+        this.timestamps.delete(oldestKey);
+      }
+    }
+
+    this.map.set(key, value);
+    this.timestamps.set(key, Date.now());
+  }
+
+  get(key) {
+    const timestamp = this.timestamps.get(key);
+    if (timestamp && Date.now() - timestamp > this.ttlMs) {
+      this.map.delete(key);
+      this.timestamps.delete(key);
+      return undefined;
+    }
+    return this.map.get(key);
+  }
+
+  delete(key) {
+    this.map.delete(key);
+    this.timestamps.delete(key);
+  }
+
+  cleanup() {
+    const now = Date.now();
+    for (const [key, timestamp] of this.timestamps.entries()) {
+      if (now - timestamp > this.ttlMs) {
+        this.map.delete(key);
+        this.timestamps.delete(key);
+      }
+    }
+  }
+
+  get size() {
+    return this.map.size;
+  }
+}
+
+const progressMap = new ProgressMap();
 
 /**
  * GET /api/analysis/progress/:requestId
@@ -168,7 +236,7 @@ router.get('/progress/:requestId', (req, res) => {
 
 // POST /api/analysis/comments
 // Unified analysis: comments + optional video upload
-router.post('/comments', authenticate, uploadFields, async (req, res) => {
+router.post('/comments', authenticate, uploadFields, uploadRateLimiter, async (req, res) => {
   try {
     const {
       url,
@@ -338,14 +406,24 @@ router.post('/comments', authenticate, uploadFields, async (req, res) => {
  */
 router.get('/history', authenticate, async (req, res) => {
   try {
-    const { limit = 20, offset = 0, status, my_videos } = req.query;
+    const { status, my_videos } = req.query;
+
+    // Validate and sanitize pagination params
+    const MAX_LIMIT = 100;
+    const DEFAULT_LIMIT = 20;
+    let limit = parseInt(req.query.limit) || DEFAULT_LIMIT;
+    let offset = parseInt(req.query.offset) || 0;
+
+    // Clamp values to safe ranges
+    limit = Math.max(1, Math.min(limit, MAX_LIMIT));
+    offset = Math.max(0, offset);
 
     let query = supabaseAdmin
       .from('analyses')
       .select('id, platform, video_title, analysis_type, comment_count, tokens_used, status, created_at, is_my_video, is_competitor, video_score, priority_improvement', { count: 'exact' })
       .eq('user_id', req.user.id)
       .order('created_at', { ascending: false })
-      .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
+      .range(offset, offset + limit - 1);
 
     if (status) {
       query = query.eq('status', status);
@@ -549,14 +627,18 @@ router.get('/:id/export', authenticate, validateUUID('id'), async (req, res) => 
 
 /**
  * Extract frames from video using FFmpeg
+ * @param {string} videoPath - Path to video file
+ * @param {number} framesPerSecond - Frames to extract per second
+ * @param {number} timeoutMs - Timeout in milliseconds (default 5 minutes)
  */
-async function extractVideoFrames(videoPath, framesPerSecond = 2) {
+async function extractVideoFrames(videoPath, framesPerSecond = 2, timeoutMs = 5 * 60 * 1000) {
   const tempDir = os.tmpdir();
   const framePrefix = `frame-${Date.now()}`;
 
   return new Promise((resolve, reject) => {
     const frames = [];
     const outputPattern = path.join(tempDir, `${framePrefix}-%03d.jpg`);
+    let isResolved = false;
 
     // Extract 1 frame every N seconds, max 20 frames, good quality JPEG
     const ffmpeg = spawn('ffmpeg', [
@@ -568,12 +650,26 @@ async function extractVideoFrames(videoPath, framesPerSecond = 2) {
       outputPattern,
     ]);
 
+    // Set timeout
+    const timeout = setTimeout(() => {
+      if (!isResolved) {
+        isResolved = true;
+        ffmpeg.kill('SIGKILL');
+        console.error('[Video] FFmpeg timeout - process killed');
+        reject(new Error('Video frame extraction timed out after 5 minutes'));
+      }
+    }, timeoutMs);
+
     let stderr = '';
     ffmpeg.stderr.on('data', (data) => {
       stderr += data.toString();
     });
 
     ffmpeg.on('error', (err) => {
+      if (isResolved) return;
+      isResolved = true;
+      clearTimeout(timeout);
+
       if (err.code === 'ENOENT') {
         console.error('[Video] FFmpeg not found');
         reject(new Error('ffmpeg not found. Please install ffmpeg to use video analysis features.'));
@@ -584,6 +680,10 @@ async function extractVideoFrames(videoPath, framesPerSecond = 2) {
     });
 
     ffmpeg.on('close', async (code) => {
+      if (isResolved) return;
+      isResolved = true;
+      clearTimeout(timeout);
+
       if (code !== 0) {
         console.error(`[Video] FFmpeg exited with code ${code}`);
         console.error('[Video] FFmpeg stderr:', stderr.slice(-500));
@@ -633,11 +733,15 @@ async function extractVideoFrames(videoPath, framesPerSecond = 2) {
 
 /**
  * Extract audio from video using FFmpeg (for Whisper transcription)
+ * @param {string} videoPath - Path to video file
+ * @param {number} timeoutMs - Timeout in milliseconds (default 5 minutes)
  */
-async function extractAudio(videoPath) {
+async function extractAudio(videoPath, timeoutMs = 5 * 60 * 1000) {
   const outputPath = videoPath + '.audio.mp3';
 
   return new Promise((resolve, reject) => {
+    let isResolved = false;
+
     const ffmpeg = spawn('ffmpeg', [
       '-i', videoPath,
       '-vn',                    // No video
@@ -649,7 +753,21 @@ async function extractAudio(videoPath) {
       outputPath,
     ]);
 
+    // Set timeout
+    const timeout = setTimeout(() => {
+      if (!isResolved) {
+        isResolved = true;
+        ffmpeg.kill('SIGKILL');
+        console.error('[Audio] FFmpeg timeout - process killed');
+        reject(new Error('Audio extraction timed out after 5 minutes'));
+      }
+    }, timeoutMs);
+
     ffmpeg.on('error', (err) => {
+      if (isResolved) return;
+      isResolved = true;
+      clearTimeout(timeout);
+
       if (err.code === 'ENOENT') {
         reject(new Error('ffmpeg not found'));
       } else {
@@ -658,6 +776,10 @@ async function extractAudio(videoPath) {
     });
 
     ffmpeg.on('close', (code) => {
+      if (isResolved) return;
+      isResolved = true;
+      clearTimeout(timeout);
+
       if (code !== 0) {
         reject(new Error('Audio extraction failed'));
       } else {
@@ -833,7 +955,7 @@ async function processAnalysisJob({
  * GET /api/analysis/compare/:id1/:id2
  * Compare two analyses side-by-side
  */
-router.get('/compare/:id1/:id2', authenticate, async (req, res) => {
+router.get('/compare/:id1/:id2', authenticate, validateUUID('id1'), validateUUID('id2'), async (req, res) => {
   try {
     const { id1, id2 } = req.params;
 

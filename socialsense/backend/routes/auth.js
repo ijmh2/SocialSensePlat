@@ -86,7 +86,15 @@ router.get('/token-balance', authenticate, async (req, res) => {
  */
 router.get('/transactions', authenticate, async (req, res) => {
   try {
-    const { limit = 50, offset = 0 } = req.query;
+    // Validate and sanitize pagination params
+    const MAX_LIMIT = 100;
+    const DEFAULT_LIMIT = 50;
+    let limit = parseInt(req.query.limit) || DEFAULT_LIMIT;
+    let offset = parseInt(req.query.offset) || 0;
+
+    // Clamp values to safe ranges
+    limit = Math.max(1, Math.min(limit, MAX_LIMIT));
+    offset = Math.max(0, offset);
 
     const { data: transactions, error, count } = await supabaseAdmin
       .from('token_transactions')
@@ -250,16 +258,36 @@ router.post('/apply-referral', authenticate, async (req, res) => {
 /**
  * GET /api/auth/check-referral/:code
  * Check if a referral code is valid (public endpoint for signup form)
+ * Security: Uses timing-safe response to prevent user enumeration
  */
 router.get('/check-referral/:code', async (req, res) => {
+  const startTime = Date.now();
+  const MIN_RESPONSE_TIME = 100; // Minimum 100ms response to prevent timing attacks
+
   try {
     const { code } = req.params;
+
+    // Validate code format (6 alphanumeric chars)
+    if (!code || code.length !== 6 || !/^[A-Z0-9]+$/i.test(code)) {
+      // Wait to prevent timing attack
+      const elapsed = Date.now() - startTime;
+      if (elapsed < MIN_RESPONSE_TIME) {
+        await new Promise(resolve => setTimeout(resolve, MIN_RESPONSE_TIME - elapsed));
+      }
+      return res.json({ valid: false });
+    }
 
     const { data: referrer, error } = await supabaseAdmin
       .from('profiles')
       .select('id, full_name')
       .eq('referral_code', code.toUpperCase())
       .single();
+
+    // Wait to normalize response time
+    const elapsed = Date.now() - startTime;
+    if (elapsed < MIN_RESPONSE_TIME) {
+      await new Promise(resolve => setTimeout(resolve, MIN_RESPONSE_TIME - elapsed));
+    }
 
     if (error || !referrer) {
       return res.json({ valid: false });
@@ -271,6 +299,11 @@ router.get('/check-referral/:code', async (req, res) => {
     });
   } catch (error) {
     console.error('Check referral error:', error);
+    // Wait to normalize response time even on error
+    const elapsed = Date.now() - startTime;
+    if (elapsed < MIN_RESPONSE_TIME) {
+      await new Promise(resolve => setTimeout(resolve, MIN_RESPONSE_TIME - elapsed));
+    }
     res.json({ valid: false });
   }
 });
