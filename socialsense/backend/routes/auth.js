@@ -177,7 +177,7 @@ router.post('/apply-referral', authenticate, async (req, res) => {
     // Find the referrer by code
     const { data: referrer, error: referrerError } = await supabaseAdmin
       .from('profiles')
-      .select('id, referral_code')
+      .select('id, referral_code, referral_count')
       .eq('referral_code', referral_code.toUpperCase())
       .single();
 
@@ -209,8 +209,8 @@ router.post('/apply-referral', authenticate, async (req, res) => {
       return res.status(500).json({ error: 'Failed to process referral' });
     }
 
-    // Now award tokens - both operations should succeed since referral is recorded
-    const [referrerResult, referredResult] = await Promise.all([
+    // Now award tokens - use Promise.allSettled to handle partial failures gracefully
+    const tokenResults = await Promise.allSettled([
       supabaseAdmin.rpc('add_tokens', {
         p_user_id: referrer.id,
         p_amount: REFERRAL_BONUS,
@@ -225,15 +225,25 @@ router.post('/apply-referral', authenticate, async (req, res) => {
       }),
     ]);
 
-    if (referrerResult.error) {
-      console.error('Failed to award referrer tokens:', referrerResult.error);
+    // Check for failures in token awards
+    const referrerResult = tokenResults[0];
+    const referredResult = tokenResults[1];
+
+    if (referrerResult.status === 'rejected') {
+      console.error('Failed to award referrer tokens (rejected):', referrerResult.reason);
+    } else if (referrerResult.value?.error) {
+      console.error('Failed to award referrer tokens:', referrerResult.value.error);
     }
-    if (referredResult.error) {
-      console.error('Failed to award referred user tokens:', referredResult.error);
+
+    if (referredResult.status === 'rejected') {
+      console.error('Failed to award referred user tokens (rejected):', referredResult.reason);
+    } else if (referredResult.value?.error) {
+      console.error('Failed to award referred user tokens:', referredResult.value.error);
     }
 
     // Update referrer's count and referred user's referred_by field in parallel
-    await Promise.all([
+    // Use Promise.allSettled to prevent unhandled rejections
+    const profileResults = await Promise.allSettled([
       supabaseAdmin
         .from('profiles')
         .update({ referral_count: (referrer.referral_count || 0) + 1 })
@@ -243,6 +253,15 @@ router.post('/apply-referral', authenticate, async (req, res) => {
         .update({ referred_by: referrer.id })
         .eq('id', req.user.id),
     ]);
+
+    // Log any profile update failures
+    profileResults.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        console.error(`Profile update ${index} failed:`, result.reason);
+      } else if (result.value?.error) {
+        console.error(`Profile update ${index} error:`, result.value.error);
+      }
+    });
 
     res.json({
       success: true,

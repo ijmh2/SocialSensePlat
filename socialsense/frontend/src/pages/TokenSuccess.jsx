@@ -64,6 +64,8 @@ const TokenSuccess = () => {
   }, [searchParams]);
 
   const verifySession = async (sessionId, retry = 0) => {
+    let shouldRetry = false;
+
     try {
       console.log(`[TOKEN_SUCCESS] Verifying session: ${sessionId}, attempt: ${retry + 1}`);
       setLoading(true);
@@ -81,6 +83,7 @@ const TokenSuccess = () => {
       if ((err.response?.status === 400 && status !== 'paid') && retry < 5) {
         console.log('[TOKEN_SUCCESS] Payment not marked as paid yet, retrying...');
         setRetryCount(retry + 1);
+        shouldRetry = true;
         setTimeout(() => verifySession(sessionId, retry + 1), 2000);
         return; // Important: we stay in loading state because retry is scheduled
       }
@@ -95,8 +98,7 @@ const TokenSuccess = () => {
       }
     } finally {
       // Only set loading false if we aren't planning to retry
-      const status = err?.response?.data?.status;
-      if (!(err?.response?.status === 400 && status !== 'paid' && retry < 5)) {
+      if (!shouldRetry) {
         setLoading(false);
       }
     }

@@ -2,6 +2,12 @@ import OpenAI from 'openai';
 import fs from 'fs';
 import { extractThemesAndKeywords, stratifiedSample } from './commentProcessor.js';
 
+// Validate OpenAI API key
+if (!process.env.OPENAI_API_KEY) {
+  console.error('❌ OPENAI_API_KEY is not set!');
+  process.exit(1);
+}
+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });

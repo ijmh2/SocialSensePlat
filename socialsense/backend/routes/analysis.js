@@ -30,6 +30,21 @@ import { aggregateSentiment } from '../services/sentiment.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const router = express.Router();
 
+/**
+ * Helper to safely delete temp files with proper logging
+ */
+async function safeUnlink(filePath, context = 'unknown') {
+  if (!filePath) return;
+  try {
+    await fs.unlink(filePath);
+  } catch (err) {
+    // Only log if file exists but couldn't be deleted (not ENOENT)
+    if (err.code !== 'ENOENT') {
+      console.error(`[Cleanup] Failed to delete temp file (${context}): ${filePath}`, err.message);
+    }
+  }
+}
+
 // Configure multer for uploads (product_image and video)
 const upload = multer({
   dest: path.join(os.tmpdir(), 'socialsense-uploads'),
@@ -66,6 +81,37 @@ router.post('/estimate', authenticate, async (req, res) => {
     if (!url || !platform) {
       clearTimeout(timeout);
       return res.status(400).json({ error: 'URL and platform are required' });
+    }
+
+    // Validate URL format and domain to prevent SSRF attacks
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(url);
+    } catch {
+      clearTimeout(timeout);
+      return res.status(400).json({ error: 'Invalid URL format' });
+    }
+
+    // Only allow https (and http for local dev)
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+      clearTimeout(timeout);
+      return res.status(400).json({ error: 'Only HTTP/HTTPS URLs are allowed' });
+    }
+
+    // Validate domain matches platform
+    const hostname = parsedUrl.hostname.toLowerCase();
+    if (platform === 'youtube') {
+      const validYouTubeDomains = ['youtube.com', 'www.youtube.com', 'youtu.be', 'm.youtube.com'];
+      if (!validYouTubeDomains.includes(hostname)) {
+        clearTimeout(timeout);
+        return res.status(400).json({ error: 'URL must be from youtube.com or youtu.be' });
+      }
+    } else if (platform === 'tiktok') {
+      const validTikTokDomains = ['tiktok.com', 'www.tiktok.com', 'vm.tiktok.com', 'm.tiktok.com'];
+      if (!validTikTokDomains.includes(hostname)) {
+        clearTimeout(timeout);
+        return res.status(400).json({ error: 'URL must be from tiktok.com' });
+      }
     }
 
     let videoDetails = null;
@@ -267,6 +313,31 @@ router.post('/comments', authenticate, uploadFields, uploadRateLimiter, async (r
       return res.status(400).json({ error: 'URL and platform are required' });
     }
 
+    // Validate URL format and domain to prevent SSRF attacks
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(url);
+    } catch {
+      return res.status(400).json({ error: 'Invalid URL format' });
+    }
+
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+      return res.status(400).json({ error: 'Only HTTP/HTTPS URLs are allowed' });
+    }
+
+    const hostname = parsedUrl.hostname.toLowerCase();
+    if (platform === 'youtube') {
+      const validYouTubeDomains = ['youtube.com', 'www.youtube.com', 'youtu.be', 'm.youtube.com'];
+      if (!validYouTubeDomains.includes(hostname)) {
+        return res.status(400).json({ error: 'URL must be from youtube.com or youtu.be' });
+      }
+    } else if (platform === 'tiktok') {
+      const validTikTokDomains = ['tiktok.com', 'www.tiktok.com', 'vm.tiktok.com', 'm.tiktok.com'];
+      if (!validTikTokDomains.includes(hostname)) {
+        return res.status(400).json({ error: 'URL must be from tiktok.com' });
+      }
+    }
+
     // Extract files from multer
     const productImageFile = req.files?.product_image?.[0];
     const videoFile = req.files?.video?.[0];
@@ -335,8 +406,8 @@ router.post('/comments', authenticate, uploadFields, uploadRateLimiter, async (r
 
     if (deductError || !deductResult?.[0]?.success) {
       // Cleanup uploaded files
-      if (productImageFile) await fs.unlink(productImageFile.path).catch(() => { });
-      if (videoFile) await fs.unlink(videoFile.path).catch(() => { });
+      if (productImageFile) await safeUnlink(productImageFile.path, 'productImage');
+      if (videoFile) await safeUnlink(videoFile.path, 'videoFile');
       return res.status(402).json({ error: deductResult?.[0]?.message || 'Insufficient tokens' });
     }
 
@@ -361,8 +432,8 @@ router.post('/comments', authenticate, uploadFields, uploadRateLimiter, async (r
       .single();
 
     if (createError) {
-      if (productImageFile) await fs.unlink(productImageFile.path).catch(() => { });
-      if (videoFile) await fs.unlink(videoFile.path).catch(() => { });
+      if (productImageFile) await safeUnlink(productImageFile.path, 'productImage');
+      if (videoFile) await safeUnlink(videoFile.path, 'videoFile');
       return res.status(500).json({ error: 'Failed to create analysis record' });
     }
 
@@ -707,13 +778,13 @@ async function extractVideoFrames(videoPath, framesPerSecond = 2, timeoutMs = 5 
           if (frameBuffer.length > 1024) {
             frames.push(frameBuffer.toString('base64'));
           }
-          await fs.unlink(framePath).catch(() => { });
+          await safeUnlink(framePath, 'videoFrame');
         }
 
         // Clean up any remaining frames
         for (const file of frameFiles.slice(15)) {
           const framePath = path.join(tempDir, file);
-          await fs.unlink(framePath).catch(() => { });
+          await safeUnlink(framePath, 'videoFrame');
         }
 
         if (frames.length === 0) {
@@ -861,14 +932,14 @@ async function processAnalysisJob({
         const audioPath = await extractAudio(videoFilePath);
         console.log('[Video] Audio extracted, transcribing...');
         videoTranscript = await transcribeAudio(audioPath);
-        await fs.unlink(audioPath).catch(() => { });
+        await safeUnlink(audioPath, 'audioFile');
         console.log(`[Video] Transcription complete: ${videoTranscript?.length || 0} chars`);
       } catch (audioErr) {
         console.warn('[Video] Audio transcription failed:', audioErr.message);
       }
 
       // Cleanup video file
-      await fs.unlink(videoFilePath).catch(() => { });
+      await safeUnlink(videoFilePath, 'videoFilePath');
     }
 
     // 6. Prepare Marketing Context
@@ -935,7 +1006,7 @@ async function processAnalysisJob({
     }
 
     // Cleanup
-    if (productImagePath) await fs.unlink(productImagePath).catch(() => { });
+    if (productImagePath) await safeUnlink(productImagePath, 'productImagePath');
     if (request_id) setTimeout(() => progressMap.delete(request_id), 60000);
 
   } catch (error) {
@@ -945,8 +1016,8 @@ async function processAnalysisJob({
       error_message: error.message
     }).eq('id', analysisId);
 
-    if (productImagePath) await fs.unlink(productImagePath).catch(() => { });
-    if (videoFilePath) await fs.unlink(videoFilePath).catch(() => { });
+    if (productImagePath) await safeUnlink(productImagePath, 'productImagePath');
+    if (videoFilePath) await safeUnlink(videoFilePath, 'videoFilePath');
     if (request_id) setTimeout(() => progressMap.delete(request_id), 30000);
   }
 }

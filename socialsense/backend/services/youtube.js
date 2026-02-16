@@ -1,10 +1,9 @@
 import { google } from 'googleapis';
 
-console.log('Initializing YouTube API client...');
+// Validate YouTube API key
 if (!process.env.YOUTUBE_API_KEY) {
-  console.error('CRITICAL: YOUTUBE_API_KEY is missing in backend environment!');
-} else {
-  console.log('YOUTUBE_API_KEY is present (starts with:', process.env.YOUTUBE_API_KEY.substring(0, 5) + ')');
+  console.error('❌ YOUTUBE_API_KEY is not set!');
+  process.exit(1);
 }
 
 const youtube = google.youtube({

@@ -11,9 +11,21 @@ const router = express.Router();
 router.post('/stripe', async (req, res) => {
   const sig = req.headers['stripe-signature'];
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  
+
+  // Validate webhook secret is configured
+  if (!webhookSecret) {
+    console.error('STRIPE_WEBHOOK_SECRET is not configured');
+    return res.status(500).json({ error: 'Webhook not configured' });
+  }
+
+  // Validate signature header exists
+  if (!sig) {
+    console.error('Missing stripe-signature header');
+    return res.status(400).json({ error: 'Missing signature' });
+  }
+
   let event;
-  
+
   try {
     event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
   } catch (err) {
@@ -50,9 +62,10 @@ router.post('/stripe', async (req, res) => {
             
             if (error) {
               console.error('Failed to add tokens via webhook:', error);
-            } else {
-              console.log(`✅ Added ${tokens} tokens to user ${userId}`);
+              // Return 500 so Stripe will retry the webhook
+              return res.status(500).json({ error: 'Failed to add tokens' });
             }
+            console.log(`✅ Added ${tokens} tokens to user ${userId}`);
           }
         }
       }

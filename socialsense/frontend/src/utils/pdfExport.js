@@ -61,10 +61,21 @@ export const generateAnalysisPDF = (analysis) => {
 
   const filterStats = analysis.filter_stats || {};
 
-  // Convert markdown to simple HTML
+  // Escape HTML entities to prevent XSS
+  const escapeHtml = (text) => {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  };
+
+  // Convert markdown to simple HTML (with XSS protection)
   const markdownToHtml = (md) => {
     if (!md) return '';
-    return md
+    // First escape any HTML to prevent XSS
+    let escaped = escapeHtml(md);
+    // Then convert markdown syntax to HTML
+    return escaped
       .replace(/^### (.*$)/gim, '<h3>$1</h3>')
       .replace(/^## (.*$)/gim, '<h2>$1</h2>')
       .replace(/^# (.*$)/gim, '<h1>$1</h1>')
@@ -78,12 +89,18 @@ export const generateAnalysisPDF = (analysis) => {
       .replace(/\n/g, '<br/>');
   };
 
+  // Pre-escape user-controlled values for safe HTML interpolation
+  const safeTitle = escapeHtml(analysis.video_title || 'SocialSense');
+  const safeCreatorNotes = escapeHtml(analysis.creator_notes);
+  const safeCompetitorNotes = escapeHtml(analysis.competitor_notes);
+  const safePriorityImprovement = escapeHtml(analysis.priority_improvement);
+
   const html = `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Analysis Report - ${analysis.video_title || 'SocialSense'}</title>
+  <title>Analysis Report - ${safeTitle}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -275,7 +292,7 @@ export const generateAnalysisPDF = (analysis) => {
     <div class="date">Generated: ${formatDate(new Date().toISOString())}</div>
   </div>
 
-  <h1 class="title">${analysis.video_title || 'Video Analysis Report'}</h1>
+  <h1 class="title">${safeTitle}</h1>
   <p class="subtitle">
     <span class="badge badge-platform">${analysis.platform?.toUpperCase() || 'VIDEO'}</span>
     ${analysis.is_my_video && analysis.video_score != null ? `<span class="badge badge-score">Score: ${analysis.video_score}/100 - ${getScoreLabel(analysis.video_score)}</span>` : ''}
@@ -308,10 +325,10 @@ export const generateAnalysisPDF = (analysis) => {
     </div>
   </div>
 
-  ${analysis.priority_improvement ? `
+  ${safePriorityImprovement ? `
   <div class="priority-box">
     <div class="priority-title">Priority Improvement</div>
-    <div>${analysis.priority_improvement}</div>
+    <div>${safePriorityImprovement}</div>
   </div>
   ` : ''}
 

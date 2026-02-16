@@ -157,11 +157,10 @@ async function runScheduledAnalysis(schedule) {
       startTime,
     });
 
-    // 6. Update schedule with success
-    const nextRun = calculateNextRun(schedule.frequency);
+    // 6. Update schedule with success (next_run_at was already updated by claim)
     await supabaseAdmin.from('scheduled_analyses').update({
       last_run_at: new Date().toISOString(),
-      next_run_at: nextRun,
+      // next_run_at is NOT updated here because we already bumped it forward in the claiming step
       run_count: (schedule.run_count || 0) + 1,
       last_analysis_id: analysis.id,
       last_error: null,
@@ -296,6 +295,9 @@ async function processScheduledAnalysisJob({
 /**
  * Check for and process due scheduled analyses
  */
+/**
+ * Check for and process due scheduled analyses
+ */
 async function processDueSchedules() {
   if (isProcessing) {
     console.log('[Scheduler] Already processing, skipping this tick');
@@ -306,13 +308,14 @@ async function processDueSchedules() {
 
   try {
     // Find schedules that are due (next_run_at <= now and is_active = true)
+    // We only select ID and frequency first to keep it light, or just select all needed fields
     const { data: dueSchedules, error } = await supabaseAdmin
       .from('scheduled_analyses')
       .select('*')
       .eq('is_active', true)
       .lte('next_run_at', new Date().toISOString())
       .order('next_run_at', { ascending: true })
-      .limit(5); // Process max 5 at a time to avoid overwhelming the system
+      .limit(5); // Process max 5 at a time
 
     if (error) {
       console.error('[Scheduler] Error fetching due schedules:', error);
@@ -323,11 +326,38 @@ async function processDueSchedules() {
       return; // Nothing to process
     }
 
-    console.log(`[Scheduler] Found ${dueSchedules.length} due schedules`);
+    console.log(`[Scheduler] Found ${dueSchedules.length} due schedules candidates`);
 
-    // Process each schedule sequentially to avoid rate limits
+    // Process each schedule
     for (const schedule of dueSchedules) {
+      // 1. Calculate the NEW next_run_at immediately
+      // This effectively "claims" the schedule for the next period
+      const nextRun = calculateNextRun(schedule.frequency, new Date()); // Use current time as base
+
+      // 2. Try to atomically claim this schedule in the DB
+      // We use RPC to ensure no other worker picks it up
+      const { data: claimed, error: claimError } = await supabaseAdmin.rpc('claim_scheduled_analysis', {
+        p_schedule_id: schedule.id,
+        p_next_run_future: nextRun
+      });
+
+      if (claimError) {
+        console.error(`[Scheduler] Failed to claim schedule ${schedule.id}:`, claimError);
+        continue;
+      }
+
+      if (!claimed) {
+        console.log(`[Scheduler] Schedule ${schedule.id} was already claimed by another worker. Skipping.`);
+        continue;
+      }
+
+      console.log(`[Scheduler] Successfully claimed schedule ${schedule.id}. Next run set to ${nextRun}`);
+
+      // 3. Run the analysis (now that we own the lock/slot)
+      // Note: If this fails, the schedule is already pushed to next run time. 
+      // This is generally safer than retrying infinitely.
       await runScheduledAnalysis(schedule);
+
       // Small delay between analyses to be nice to APIs
       await new Promise(resolve => setTimeout(resolve, 2000));
     }

@@ -1,4 +1,5 @@
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import { authenticate } from '../middleware/auth.js';
 import { validateUUID } from '../middleware/validation.js';
 import { supabaseAdmin } from '../config/supabase.js';
@@ -7,6 +8,19 @@ const router = express.Router();
 
 // Max schedules per user (prevent abuse)
 const MAX_SCHEDULES_PER_USER = 10;
+
+// Input validation constants
+const MAX_NOTES_LENGTH = 1000;
+const MAX_DESCRIPTION_LENGTH = 2000;
+const MAX_TITLE_LENGTH = 200;
+
+// Rate limiter for schedule creation (stricter than general API)
+const scheduleLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10, // Max 10 schedule operations per hour
+  keyGenerator: (req) => req.user?.id || req.ip,
+  message: { error: 'Too many schedule operations. Please try again later.' },
+});
 
 /**
  * Calculate next run time from a frequency
@@ -60,7 +74,7 @@ router.get('/', authenticate, async (req, res) => {
  * POST /api/scheduled
  * Create a new scheduled analysis
  */
-router.post('/', authenticate, async (req, res) => {
+router.post('/', authenticate, scheduleLimiter, async (req, res) => {
     try {
         const {
             platform,
@@ -77,7 +91,7 @@ router.post('/', authenticate, async (req, res) => {
             competitor_notes,
         } = req.body;
 
-        // Validate
+        // Validate required fields
         if (!platform || !video_url || !frequency) {
             return res.status(400).json({ error: 'platform, video_url, and frequency are required' });
         }
@@ -88,6 +102,51 @@ router.post('/', authenticate, async (req, res) => {
 
         if (!['daily', 'weekly', 'biweekly', 'monthly'].includes(frequency)) {
             return res.status(400).json({ error: 'Frequency must be daily, weekly, biweekly, or monthly' });
+        }
+
+        // Validate URL format and domain to prevent SSRF
+        let parsedUrl;
+        try {
+            parsedUrl = new URL(video_url);
+        } catch {
+            return res.status(400).json({ error: 'Invalid URL format' });
+        }
+
+        if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+            return res.status(400).json({ error: 'Only HTTP/HTTPS URLs are allowed' });
+        }
+
+        const hostname = parsedUrl.hostname.toLowerCase();
+        if (platform === 'youtube') {
+            const validYouTubeDomains = ['youtube.com', 'www.youtube.com', 'youtu.be', 'm.youtube.com'];
+            if (!validYouTubeDomains.includes(hostname)) {
+                return res.status(400).json({ error: 'URL must be from youtube.com or youtu.be' });
+            }
+        } else if (platform === 'tiktok') {
+            const validTikTokDomains = ['tiktok.com', 'www.tiktok.com', 'vm.tiktok.com', 'm.tiktok.com'];
+            if (!validTikTokDomains.includes(hostname)) {
+                return res.status(400).json({ error: 'URL must be from tiktok.com' });
+            }
+        }
+
+        // Validate text field lengths to prevent abuse
+        if (video_title && video_title.length > MAX_TITLE_LENGTH) {
+            return res.status(400).json({ error: `Title must be ${MAX_TITLE_LENGTH} characters or less` });
+        }
+        if (creator_notes && creator_notes.length > MAX_NOTES_LENGTH) {
+            return res.status(400).json({ error: `Creator notes must be ${MAX_NOTES_LENGTH} characters or less` });
+        }
+        if (competitor_notes && competitor_notes.length > MAX_NOTES_LENGTH) {
+            return res.status(400).json({ error: `Competitor notes must be ${MAX_NOTES_LENGTH} characters or less` });
+        }
+        if (product_description && product_description.length > MAX_DESCRIPTION_LENGTH) {
+            return res.status(400).json({ error: `Product description must be ${MAX_DESCRIPTION_LENGTH} characters or less` });
+        }
+
+        // Validate max_comments is a reasonable number
+        const parsedMaxComments = parseInt(max_comments) || 1000;
+        if (parsedMaxComments < 1 || parsedMaxComments > 10000) {
+            return res.status(400).json({ error: 'max_comments must be between 1 and 10000' });
         }
 
         // Check limit
