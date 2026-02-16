@@ -3,9 +3,19 @@
 -- Run this in Supabase SQL Editor after previous migrations
 
 -- 1. Ensure token_transaction amount is never zero
-ALTER TABLE public.token_transactions
-ADD CONSTRAINT IF NOT EXISTS check_amount_not_zero
-CHECK (amount != 0);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'check_amount_not_zero'
+        AND conrelid = 'public.token_transactions'::regclass
+    ) THEN
+        ALTER TABLE public.token_transactions
+        ADD CONSTRAINT check_amount_not_zero CHECK (amount != 0);
+    END IF;
+EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'Constraint check_amount_not_zero may already exist or column missing';
+END $$;
 
 -- 2. Add composite index for scheduled analyses queries
 CREATE INDEX IF NOT EXISTS idx_scheduled_analyses_active_user
@@ -29,9 +39,19 @@ EXCEPTION WHEN OTHERS THEN
 END $$;
 
 -- 5. Add check constraint for max_comments in scheduled_analyses
-ALTER TABLE public.scheduled_analyses
-ADD CONSTRAINT IF NOT EXISTS check_max_comments_range
-CHECK (max_comments >= 1 AND max_comments <= 10000);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'check_max_comments_range'
+        AND conrelid = 'public.scheduled_analyses'::regclass
+    ) THEN
+        ALTER TABLE public.scheduled_analyses
+        ADD CONSTRAINT check_max_comments_range CHECK (max_comments >= 1 AND max_comments <= 10000);
+    END IF;
+EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'Constraint check_max_comments_range may already exist or column missing';
+END $$;
 
 -- 6. Create function to validate URL format (basic check)
 CREATE OR REPLACE FUNCTION public.is_valid_url(url TEXT)
