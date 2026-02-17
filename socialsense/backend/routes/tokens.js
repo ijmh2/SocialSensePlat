@@ -1,7 +1,16 @@
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import stripe, { TOKEN_PACKAGES, TOKEN_COSTS } from '../config/stripe.js';
 import { supabaseAdmin } from '../config/supabase.js';
 import { authenticate } from '../middleware/auth.js';
+
+// Stricter rate limiting for checkout endpoint
+const checkoutLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10, // Max 10 checkout attempts per hour
+  keyGenerator: (req) => req.user?.id || req.ip,
+  message: { error: 'Too many checkout attempts. Please try again later.' },
+});
 
 const router = express.Router();
 
@@ -73,7 +82,7 @@ router.post('/calculate', authenticate, async (req, res) => {
  * POST /api/tokens/checkout
  * Create a Stripe checkout session for purchasing tokens
  */
-router.post('/checkout', authenticate, async (req, res) => {
+router.post('/checkout', authenticate, checkoutLimiter, async (req, res) => {
   try {
     const { package_id } = req.body;
     
@@ -323,7 +332,7 @@ router.get('/verify-session/:sessionId', authenticate, async (req, res) => {
     });
   } catch (error) {
     console.error('Verify session error:', error);
-    res.status(500).json({ error: error.message || 'Failed to verify session' });
+    res.status(500).json({ error: 'Failed to verify session' });
   }
 });
 

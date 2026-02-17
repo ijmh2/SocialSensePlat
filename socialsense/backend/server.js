@@ -29,15 +29,19 @@ console.log('✅ Trust proxy enabled (1 hop)');
 // Security middleware
 app.use(helmet());
 
-// CORS configuration - reject unknown origins in production
+// CORS configuration - fail loudly in production if FRONTEND_URL not set
+const isProduction = process.env.NODE_ENV === 'production';
+if (isProduction && !process.env.FRONTEND_URL) {
+  console.error('❌ FRONTEND_URL must be set in production!');
+  process.exit(1);
+}
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || (
-    process.env.NODE_ENV === 'production' ? false : 'http://localhost:5173'
-  ),
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
   credentials: true,
 }));
 
-// Rate limiting
+// Rate limiting - general API
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
@@ -45,6 +49,7 @@ const limiter = rateLimit({
   validate: { trustProxy: false }, // Skip trust proxy validation for Railway
 });
 app.use('/api/', limiter);
+
 
 // Stripe webhook needs raw body
 app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }));
