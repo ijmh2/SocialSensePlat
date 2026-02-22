@@ -226,7 +226,7 @@ const TermsOfService = () => {
             <Section title="12. Contact Information">
               <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.8 }}>
                 If you have any questions about these Terms of Service, please contact us at:{' '}
-                <Link href="mailto:support@commentiq.app">support@commentiq.app</Link>
+                <Link href="mailto:support@getcommentiq.com">support@getcommentiq.com</Link>
               </Typography>
             </Section>
           </Box>

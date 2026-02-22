@@ -224,7 +224,7 @@ const PrivacyPolicy = () => {
             <Section title="12. Contact Us">
               <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.8 }}>
                 If you have any questions about this Privacy Policy or our data practices, please contact us at:{' '}
-                <Link href="mailto:privacy@commentiq.app">privacy@commentiq.app</Link>
+                <Link href="mailto:privacy@getcommentiq.com">privacy@getcommentiq.com</Link>
               </Typography>
             </Section>
           </Box>
