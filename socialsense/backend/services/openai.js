@@ -653,8 +653,16 @@ Make sure to directly address this question with specific evidence from the comm
       console.log('[OpenAI] Action items extracted:', actionItems.length);
     }
 
+    // Clean summary by removing internal markers before returning
+    let cleanedSummary = summary
+      .replace(/\*\*SCORE_BREAKDOWN_START\*\*[\s\S]*?\*\*SCORE_BREAKDOWN_END\*\*/gi, '')
+      .replace(/\*\*ACTION_ITEMS_START\*\*[\s\S]*?\*\*ACTION_ITEMS_END\*\*/gi, '')
+      .replace(/\*\*COMPETITOR_ANALYSIS_START\*\*[\s\S]*?\*\*COMPETITOR_ANALYSIS_END\*\*/gi, '')
+      .replace(/\n{3,}/g, '\n\n') // Clean up extra newlines left behind
+      .trim();
+
     return {
-      summary: summary + footer,
+      summary: cleanedSummary + footer,
       keywords,
       themes,
       stats: {
