@@ -76,7 +76,7 @@ const PrivacyPolicy = () => {
                 <AutoGraph sx={{ color: 'white', fontSize: 24 }} />
               </Box>
               <Typography variant="h5" fontWeight={700}>
-                SocialSense
+                CommentIQ
               </Typography>
             </Box>
 
@@ -102,7 +102,7 @@ const PrivacyPolicy = () => {
           >
             <Section title="1. Introduction">
               <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.8 }}>
-                SocialSense ("we", "us", or "our") is committed to protecting your privacy. This Privacy Policy
+                CommentIQ ("we", "us", or "our") is committed to protecting your privacy. This Privacy Policy
                 explains how we collect, use, disclose, and safeguard your information when you use our
                 AI-powered social media comment analysis service ("the Service").
               </Typography>
@@ -224,7 +224,7 @@ const PrivacyPolicy = () => {
             <Section title="12. Contact Us">
               <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.8 }}>
                 If you have any questions about this Privacy Policy or our data practices, please contact us at:{' '}
-                <Link href="mailto:privacy@socialsense.app">privacy@socialsense.app</Link>
+                <Link href="mailto:privacy@commentiq.app">privacy@commentiq.app</Link>
               </Typography>
             </Section>
           </Box>

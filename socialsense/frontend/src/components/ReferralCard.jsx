@@ -74,11 +74,11 @@ const ReferralCard = () => {
   const handleShare = async () => {
     if (referralData?.referral_code) {
       const link = `${window.location.origin}/signup?ref=${referralData.referral_code}`;
-      const text = `Join me on SocialSense and get 10 free tokens! Use my referral code: ${referralData.referral_code}`;
+      const text = `Join me on CommentIQ and get 10 free tokens! Use my referral code: ${referralData.referral_code}`;
 
       if (navigator.share) {
         try {
-          await navigator.share({ title: 'SocialSense Referral', text, url: link });
+          await navigator.share({ title: 'CommentIQ Referral', text, url: link });
         } catch (err) {
           if (err.name !== 'AbortError') {
             handleCopyLink();

@@ -93,7 +93,7 @@ app.use((req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 SocialSense API running on port ${PORT}`);
+  console.log(`🚀 CommentIQ API running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
 
   // Start the scheduled analysis processor

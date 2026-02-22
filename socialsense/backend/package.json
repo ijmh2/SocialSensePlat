@@ -1,7 +1,7 @@
 {
-  "name": "socialsense-backend",
+  "name": "commentiq-backend",
   "version": "1.0.0",
-  "description": "SocialSense API Backend",
+  "description": "CommentIQ API Backend",
   "main": "server.js",
   "type": "module",
   "scripts": {

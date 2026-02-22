@@ -76,7 +76,7 @@ const TermsOfService = () => {
                 <AutoGraph sx={{ color: 'white', fontSize: 24 }} />
               </Box>
               <Typography variant="h5" fontWeight={700}>
-                SocialSense
+                CommentIQ
               </Typography>
             </Box>
 
@@ -102,7 +102,7 @@ const TermsOfService = () => {
           >
             <Section title="1. Acceptance of Terms">
               <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.8 }}>
-                By accessing or using SocialSense ("the Service"), you agree to be bound by these Terms of Service.
+                By accessing or using CommentIQ ("the Service"), you agree to be bound by these Terms of Service.
                 If you do not agree to these terms, please do not use the Service. We reserve the right to modify
                 these terms at any time, and your continued use of the Service constitutes acceptance of any changes.
               </Typography>
@@ -110,7 +110,7 @@ const TermsOfService = () => {
 
             <Section title="2. Description of Service">
               <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.8 }}>
-                SocialSense provides AI-powered social media comment analysis for YouTube and TikTok content.
+                CommentIQ provides AI-powered social media comment analysis for YouTube and TikTok content.
                 Our Service analyzes public comments to provide insights about audience sentiment, engagement patterns,
                 and content performance. The Service operates on a token-based billing system where users purchase
                 tokens to perform analyses.
@@ -147,7 +147,7 @@ const TermsOfService = () => {
 
             <Section title="5. Intellectual Property">
               <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.8 }}>
-                The Service, including its original content, features, and functionality, is owned by SocialSense
+                The Service, including its original content, features, and functionality, is owned by CommentIQ
                 and is protected by copyright, trademark, and other intellectual property laws. You retain ownership
                 of your analysis results and data. By using the Service, you grant us a limited license to process
                 your data solely for the purpose of providing the Service.
@@ -193,7 +193,7 @@ const TermsOfService = () => {
                 <Typography variant="body1" sx={{ lineHeight: 1.8 }}>
                   <strong>YouTube</strong> is a trademark of Google LLC.<br />
                   <strong>TikTok</strong> is a registered trademark of ByteDance Ltd.<br /><br />
-                  SocialSense is an independent service and is <strong>not affiliated with, endorsed by,
+                  CommentIQ is an independent service and is <strong>not affiliated with, endorsed by,
                   sponsored by, or in any way officially connected with Google LLC, YouTube, ByteDance Ltd,
                   TikTok, or any of their subsidiaries or affiliates</strong>.<br /><br />
                   The official YouTube website can be found at{' '}
@@ -226,7 +226,7 @@ const TermsOfService = () => {
             <Section title="12. Contact Information">
               <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.8 }}>
                 If you have any questions about these Terms of Service, please contact us at:{' '}
-                <Link href="mailto:support@socialsense.app">support@socialsense.app</Link>
+                <Link href="mailto:support@commentiq.app">support@commentiq.app</Link>
               </Typography>
             </Section>
           </Box>

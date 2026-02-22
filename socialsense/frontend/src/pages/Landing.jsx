@@ -364,7 +364,7 @@ const Landing = () => {
               color="text.secondary"
               sx={{ mb: 4, maxWidth: 500, mx: 'auto' }}
             >
-              Join thousands of creators and marketers who use SocialSense to 
+              Join thousands of creators and marketers who use CommentIQ to 
               understand their audience better.
             </Typography>
             <Button
@@ -392,7 +392,7 @@ const Landing = () => {
           }}
         >
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            © 2026 SocialSense Platinum. All rights reserved.
+            © 2026 CommentIQ. All rights reserved.
           </Typography>
           <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3 }}>
             <Typography

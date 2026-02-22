@@ -179,7 +179,7 @@ const SignUp = () => {
                 <AutoGraph sx={{ color: 'white', fontSize: 28 }} />
               </Box>
               <Typography variant="h5" fontWeight={700}>
-                SocialSense
+                CommentIQ
               </Typography>
             </Box>
           </Box>

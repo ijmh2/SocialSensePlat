@@ -135,10 +135,7 @@ const Layout = ({ children }) => {
                     noWrap
                     sx={{ color: colors.textPrimary, fontFamily: '"Plus Jakarta Sans", sans-serif' }}
                   >
-                    SocialSense
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: colors.textMuted }} noWrap>
-                    Platinum
+                    CommentIQ
                   </Typography>
                 </Box>
               </motion.div>
@@ -381,7 +378,7 @@ const Layout = ({ children }) => {
             {mobileOpen ? <Close sx={{ color: colors.textPrimary }} /> : <MenuIcon sx={{ color: colors.textPrimary }} />}
           </IconButton>
           <Typography variant="h6" sx={{ flex: 1, color: colors.textPrimary }} fontWeight={700}>
-            SocialSense
+            CommentIQ
           </Typography>
           <Chip
             icon={<TokenIcon sx={{ fontSize: 16, color: colors.primary }} />}
