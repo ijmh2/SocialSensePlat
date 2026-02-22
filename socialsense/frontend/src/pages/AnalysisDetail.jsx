@@ -237,9 +237,6 @@ const AnalysisDetail = () => {
     return null;
   }
 
-  // Debug log
-  console.log('Analysis Data:', analysis);
-
   let keywords = [];
   try {
     keywords = Array.isArray(analysis.keywords)
@@ -589,7 +586,7 @@ const AnalysisDetail = () => {
                   },
                 }}
               >
-                <ReactMarkdown>{analysis.competitor_analysis}</ReactMarkdown>
+                <ReactMarkdown skipHtml>{analysis.competitor_analysis}</ReactMarkdown>
               </Box>
             )}
           </CardContent>
@@ -758,7 +755,7 @@ const AnalysisDetail = () => {
                     },
                   }}
                 >
-                  <ReactMarkdown>{analysis.summary}</ReactMarkdown>
+                  <ReactMarkdown skipHtml>{analysis.summary}</ReactMarkdown>
                 </Box>
               ) : (
                 <Typography color="text.secondary" textAlign="center" py={4}>

@@ -218,7 +218,7 @@ router.post('/', authenticate, scheduleLimiter, async (req, res) => {
  * PATCH /api/scheduled/:id
  * Update a scheduled analysis (frequency, active status, etc.)
  */
-router.patch('/:id', authenticate, async (req, res) => {
+router.patch('/:id', authenticate, validateUUID('id'), scheduleLimiter, async (req, res) => {
     try {
         const { id } = req.params;
         const updates = {};
@@ -274,7 +274,7 @@ router.patch('/:id', authenticate, async (req, res) => {
  * PATCH /api/scheduled/:id/toggle
  * Toggle active status of a scheduled analysis
  */
-router.patch('/:id/toggle', authenticate, async (req, res) => {
+router.patch('/:id/toggle', authenticate, validateUUID('id'), scheduleLimiter, async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -322,7 +322,7 @@ router.patch('/:id/toggle', authenticate, async (req, res) => {
  * DELETE /api/scheduled/:id
  * Delete a scheduled analysis
  */
-router.delete('/:id', authenticate, validateUUID('id'), async (req, res) => {
+router.delete('/:id', authenticate, validateUUID('id'), scheduleLimiter, async (req, res) => {
     try {
         const { id } = req.params;
 

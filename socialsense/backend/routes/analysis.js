@@ -205,7 +205,7 @@ router.post('/estimate', authenticate, async (req, res) => {
   } catch (error) {
     clearTimeout(timeout);
     console.error('Estimate error:', error);
-    res.status(500).json({ error: error.message || 'Failed to estimate. Please try again.' });
+    res.status(500).json({ error: 'Failed to estimate. Please try again.' });
   }
 });
 
@@ -467,7 +467,7 @@ router.post('/comments', authenticate, uploadFields, uploadRateLimiter, async (r
 
   } catch (err) {
     console.error('API Error:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Failed to start analysis. Please try again.' });
   }
 });
 

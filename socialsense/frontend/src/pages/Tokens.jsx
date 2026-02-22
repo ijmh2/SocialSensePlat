@@ -101,6 +101,10 @@ const Tokens = () => {
     try {
       const { data } = await tokensApi.createCheckout(packageId);
       if (data.url) {
+        // Validate URL is from Stripe before redirecting (security)
+        if (!data.url.startsWith('https://checkout.stripe.com/')) {
+          throw new Error('Invalid checkout URL');
+        }
         window.location.href = data.url;
       } else {
         throw new Error('No checkout URL received');

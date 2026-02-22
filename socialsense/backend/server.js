@@ -29,11 +29,18 @@ console.log('✅ Trust proxy enabled (1 hop)');
 // Security middleware
 app.use(helmet());
 
-// CORS configuration - fail loudly in production if FRONTEND_URL not set
+// CORS configuration - fail loudly in production if FRONTEND_URL not set or invalid
 const isProduction = process.env.NODE_ENV === 'production';
-if (isProduction && !process.env.FRONTEND_URL) {
-  console.error('❌ FRONTEND_URL must be set in production!');
-  process.exit(1);
+if (isProduction) {
+  if (!process.env.FRONTEND_URL) {
+    console.error('❌ FRONTEND_URL must be set in production!');
+    process.exit(1);
+  }
+  // Validate FRONTEND_URL is HTTPS in production
+  if (!process.env.FRONTEND_URL.startsWith('https://')) {
+    console.error('❌ FRONTEND_URL must use HTTPS in production!');
+    process.exit(1);
+  }
 }
 
 app.use(cors({
