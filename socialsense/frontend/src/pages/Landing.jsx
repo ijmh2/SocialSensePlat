@@ -364,8 +364,8 @@ const Landing = () => {
               color="text.secondary"
               sx={{ mb: 4, maxWidth: 500, mx: 'auto' }}
             >
-              Join thousands of creators and marketers who use CommentIQ to 
-              understand their audience better.
+              Start with 10 free tokens. No credit card required.
+              See what your audience really thinks in minutes.
             </Typography>
             <Button
               variant="contained"
