@@ -737,7 +737,7 @@ const CommentAnalysis = () => {
                     )}
                     <Box sx={{ display: 'flex', gap: 2, mt: 2, flexWrap: 'wrap' }}>
                       <Chip
-                        label={`${estimate.comment_count?.toLocaleString() || 0} comments found`}
+                        label={`${(estimate.total_comments || estimate.comment_count)?.toLocaleString() || 0} comments found`}
                         size="small"
                         sx={{ boxShadow: shadows.sm, background: colors.background, color: colors.primary, fontWeight: 600 }}
                       />
@@ -747,6 +747,11 @@ const CommentAnalysis = () => {
                         sx={{ boxShadow: shadows.sm, background: colors.background, color: colors.textPrimary }}
                       />
                     </Box>
+                    {estimate.is_capped && (
+                      <Typography variant="caption" sx={{ color: colors.textSecondary, mt: 1, display: 'block' }}>
+                        Capped at {estimate.max_comments?.toLocaleString()} comments to keep everything running smoothly.
+                      </Typography>
+                    )}
                   </CardContent>
                 </Card>
 

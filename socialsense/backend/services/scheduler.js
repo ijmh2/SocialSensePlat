@@ -15,6 +15,9 @@ import { aggregateSentiment } from './sentiment.js';
 // Track if scheduler is running to prevent overlap
 let isProcessing = false;
 
+// Maximum comments to fetch (keeps processing fast and stable)
+const MAX_COMMENTS = 100000;
+
 /**
  * Calculate next run time from a frequency
  */
@@ -86,7 +89,7 @@ async function runScheduledAnalysis(schedule) {
       throw new Error('Invalid platform');
     }
 
-    const commentsToFetch = Math.min(schedule.max_comments || 1000, videoDetails.commentCount || 1000);
+    const commentsToFetch = Math.min(schedule.max_comments || 1000, videoDetails.commentCount || 1000, MAX_COMMENTS);
 
     // 2. Calculate token cost
     const tokenCost = calculateTokenCost(

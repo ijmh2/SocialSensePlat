@@ -12,6 +12,9 @@ import { validateUUID } from '../middleware/validation.js';
 import { supabaseAdmin } from '../config/supabase.js';
 import { TOKEN_COSTS } from '../config/stripe.js';
 
+// Maximum comments to fetch (keeps processing fast and stable)
+const MAX_COMMENTS = 100000;
+
 // Rate limiter for file uploads (stricter than general API)
 const uploadRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -159,13 +162,18 @@ router.post('/estimate', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Invalid platform. Use "youtube" or "tiktok".' });
     }
 
-    // Calculate token cost
+    // Cap comments at MAX_COMMENTS to keep processing stable
+    const totalComments = commentCount;
+    const cappedComments = Math.min(commentCount, MAX_COMMENTS);
+    const isCapped = totalComments > MAX_COMMENTS;
+
+    // Calculate token cost based on capped amount
     let tokenCost = 0;
 
     if (platform === 'youtube') {
-      tokenCost += Math.max(1, Math.ceil(commentCount / 1000) * TOKEN_COSTS.youtube_per_1000_comments);
+      tokenCost += Math.max(1, Math.ceil(cappedComments / 1000) * TOKEN_COSTS.youtube_per_1000_comments);
     } else {
-      tokenCost += Math.max(1, Math.ceil(commentCount / 100) * TOKEN_COSTS.tiktok_per_100_comments);
+      tokenCost += Math.max(1, Math.ceil(cappedComments / 100) * TOKEN_COSTS.tiktok_per_100_comments);
     }
 
     if (include_text_analysis) {
@@ -188,15 +196,18 @@ router.post('/estimate', authenticate, async (req, res) => {
     clearTimeout(timeout);
     res.json({
       video: videoDetails,
-      comment_count: commentCount,
+      comment_count: cappedComments,
+      total_comments: totalComments,
+      is_capped: isCapped,
+      max_comments: MAX_COMMENTS,
       token_cost: tokenCost,
       user_balance: userBalance,
       can_afford: userBalance >= tokenCost,
       has_video: !!has_video,
       breakdown: {
         scraping: platform === 'youtube'
-          ? Math.max(1, Math.ceil(commentCount / 1000) * TOKEN_COSTS.youtube_per_1000_comments)
-          : Math.max(1, Math.ceil(commentCount / 100) * TOKEN_COSTS.tiktok_per_100_comments),
+          ? Math.max(1, Math.ceil(cappedComments / 1000) * TOKEN_COSTS.youtube_per_1000_comments)
+          : Math.max(1, Math.ceil(cappedComments / 100) * TOKEN_COSTS.tiktok_per_100_comments),
         text_analysis: include_text_analysis ? TOKEN_COSTS.text_analysis : 0,
         marketing: include_marketing ? TOKEN_COSTS.marketing_analysis : 0,
         video: has_video ? TOKEN_COSTS.video_analysis : 0,
@@ -374,8 +385,8 @@ router.post('/comments', authenticate, uploadFields, uploadRateLimiter, async (r
       return res.status(400).json({ error: 'Invalid platform' });
     }
 
-    // 2. Calculate Costs (video is free)
-    const commentsToFetch = Math.min(parseInt(max_comments) || 1000, videoDetails.commentCount || 1000);
+    // 2. Calculate Costs (video is free) - cap at MAX_COMMENTS
+    const commentsToFetch = Math.min(parseInt(max_comments) || 1000, videoDetails.commentCount || 1000, MAX_COMMENTS);
     let tokenCost = 0;
     if (platform === 'youtube') {
       tokenCost += Math.max(1, Math.ceil(commentsToFetch / 1000) * TOKEN_COSTS.youtube_per_1000_comments);
