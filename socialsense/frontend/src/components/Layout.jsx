@@ -37,6 +37,7 @@ import {
   Close,
   Schedule,
   CompareArrows,
+  VerifiedUser,
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -49,6 +50,7 @@ const DRAWER_COLLAPSED_WIDTH = 80;
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
   { path: '/analyze/comments', label: 'Analysis', icon: CommentIcon },
+  { path: '/validate/engagement', label: 'Engagement', icon: VerifiedUser },
   { path: '/performance', label: 'Performance', icon: PerformanceIcon },
   { path: '/history', label: 'History', icon: HistoryIcon },
   { path: '/compare', label: 'Compare', icon: CompareArrows },

@@ -20,6 +20,7 @@ const Performance = lazy(() => import('./pages/Performance'));
 const ScheduledAnalyses = lazy(() => import('./pages/ScheduledAnalyses'));
 const Compare = lazy(() => import('./pages/Compare'));
 const Settings = lazy(() => import('./pages/Settings'));
+const EngagementValidator = lazy(() => import('./pages/EngagementValidator'));
 const TermsOfService = lazy(() => import('./pages/TermsOfService'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 
@@ -205,6 +206,16 @@ function App() {
             <ProtectedRoute>
               <Layout>
                 <Settings />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/validate/engagement"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <EngagementValidator />
               </Layout>
             </ProtectedRoute>
           }
