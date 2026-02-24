@@ -50,6 +50,10 @@ import {
   CompareArrows,
   Visibility,
   PictureAsPdf,
+  VerifiedUser,
+  Flag,
+  CheckCircle,
+  Error as ErrorIcon,
 } from '@mui/icons-material';
 import Collapse from '@mui/material/Collapse';
 import {
@@ -671,6 +675,7 @@ const AnalysisDetail = () => {
           <Tab label="Keywords & Themes" />
           <Tab label="Sentiment" />
           <Tab label="Filter Stats" />
+          {analysis.engagement_validation && <Tab label="Engagement" icon={<VerifiedUser sx={{ fontSize: 18 }} />} iconPosition="start" />}
         </Tabs>
       </Card>
 
@@ -1282,6 +1287,320 @@ const AnalysisDetail = () => {
               </Card>
             </Grid>
           </Grid>
+        </MotionBox>
+      )}
+
+      {/* Engagement Validation Tab */}
+      {activeTab === 4 && analysis.engagement_validation && (
+        <MotionBox
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        >
+          {(() => {
+            const eng = analysis.engagement_validation;
+            const getVerdictColor = (verdict) => {
+              if (verdict?.includes('Highly Authentic') || verdict?.includes('Likely Authentic')) return theme.palette.success.main;
+              if (verdict?.includes('Some Concerns')) return theme.palette.warning.main;
+              return theme.palette.error.main;
+            };
+            const getScoreGradient = (score) => {
+              if (score >= 75) return 'linear-gradient(135deg, #16A34A 0%, #22C55E 100%)';
+              if (score >= 60) return 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)';
+              if (score >= 40) return 'linear-gradient(135deg, #D97706 0%, #F59E0B 100%)';
+              return 'linear-gradient(135deg, #DC2626 0%, #EF4444 100%)';
+            };
+
+            return (
+              <Grid container spacing={3}>
+                {/* Authenticity Score Card */}
+                <Grid item xs={12} md={4}>
+                  <Card sx={{ height: '100%' }}>
+                    <CardContent sx={{ textAlign: 'center', py: 4 }}>
+                      <Box
+                        sx={{
+                          width: 120,
+                          height: 120,
+                          borderRadius: '50%',
+                          background: getScoreGradient(eng.authenticityScore),
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          mx: 'auto',
+                          mb: 2,
+                          boxShadow: `0 8px 32px ${alpha(getVerdictColor(eng.verdict), 0.3)}`,
+                        }}
+                      >
+                        <Typography variant="h3" fontWeight={800} sx={{ color: 'white' }}>
+                          {eng.authenticityScore ?? '?'}
+                        </Typography>
+                      </Box>
+                      <Typography variant="h6" fontWeight={700} sx={{ mb: 1 }}>
+                        Authenticity Score
+                      </Typography>
+                      <Chip
+                        label={eng.verdict || 'Unknown'}
+                        sx={{
+                          background: alpha(getVerdictColor(eng.verdict), 0.15),
+                          color: getVerdictColor(eng.verdict),
+                          fontWeight: 600,
+                          fontSize: '0.9rem',
+                        }}
+                      />
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                {/* Metrics Analysis */}
+                <Grid item xs={12} md={8}>
+                  <Card sx={{ height: '100%' }}>
+                    <CardContent>
+                      <Typography variant="h6" fontWeight={600} sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <TrendingUp sx={{ color: theme.palette.primary.main }} />
+                        Engagement Metrics
+                      </Typography>
+                      {eng.metricsAnalysis && (
+                        <Grid container spacing={2}>
+                          <Grid item xs={6} sm={4}>
+                            <Box sx={{ p: 2, borderRadius: 2, background: alpha(theme.palette.primary.main, 0.05) }}>
+                              <Typography variant="caption" color="text.secondary">Views</Typography>
+                              <Typography variant="h6" fontWeight={600}>
+                                {eng.metricsAnalysis.viewCount?.toLocaleString() || 0}
+                              </Typography>
+                            </Box>
+                          </Grid>
+                          <Grid item xs={6} sm={4}>
+                            <Box sx={{ p: 2, borderRadius: 2, background: alpha(theme.palette.primary.main, 0.05) }}>
+                              <Typography variant="caption" color="text.secondary">Likes</Typography>
+                              <Typography variant="h6" fontWeight={600}>
+                                {eng.metricsAnalysis.likeCount?.toLocaleString() || 0}
+                              </Typography>
+                            </Box>
+                          </Grid>
+                          <Grid item xs={6} sm={4}>
+                            <Box sx={{ p: 2, borderRadius: 2, background: alpha(theme.palette.primary.main, 0.05) }}>
+                              <Typography variant="caption" color="text.secondary">Comments</Typography>
+                              <Typography variant="h6" fontWeight={600}>
+                                {eng.metricsAnalysis.commentCount?.toLocaleString() || 0}
+                              </Typography>
+                            </Box>
+                          </Grid>
+                          <Grid item xs={6} sm={4}>
+                            <Box sx={{ p: 2, borderRadius: 2, background: alpha(theme.palette.success.main, 0.05) }}>
+                              <Typography variant="caption" color="text.secondary">Engagement Rate</Typography>
+                              <Typography variant="h6" fontWeight={600} color="success.main">
+                                {eng.metricsAnalysis.engagementRate?.toFixed(2) || 0}%
+                              </Typography>
+                            </Box>
+                          </Grid>
+                          <Grid item xs={6} sm={4}>
+                            <Box sx={{ p: 2, borderRadius: 2, background: alpha(theme.palette.info.main, 0.05) }}>
+                              <Typography variant="caption" color="text.secondary">Likes/Views</Typography>
+                              <Typography variant="h6" fontWeight={600} color="info.main">
+                                {eng.metricsAnalysis.likesToViews?.toFixed(2) || 0}%
+                              </Typography>
+                            </Box>
+                          </Grid>
+                          <Grid item xs={6} sm={4}>
+                            <Box sx={{ p: 2, borderRadius: 2, background: alpha(theme.palette.secondary.main, 0.05) }}>
+                              <Typography variant="caption" color="text.secondary">Comments/Likes</Typography>
+                              <Typography variant="h6" fontWeight={600} color="secondary.main">
+                                {eng.metricsAnalysis.commentsToLikes?.toFixed(2) || 0}%
+                              </Typography>
+                            </Box>
+                          </Grid>
+                        </Grid>
+                      )}
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                {/* Comment Analysis */}
+                {eng.commentAnalysis && (
+                  <Grid item xs={12} md={6}>
+                    <Card>
+                      <CardContent>
+                        <Typography variant="h6" fontWeight={600} sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Comment sx={{ color: theme.palette.secondary.main }} />
+                          Comment Patterns
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 2, borderRadius: 2, background: alpha(theme.palette.warning.main, 0.05) }}>
+                            <Typography variant="body2">Emoji-Only Comments</Typography>
+                            <Typography variant="body2" fontWeight={600} color="warning.main">
+                              {eng.commentAnalysis.emojiOnlyPct?.toFixed(1) || 0}%
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 2, borderRadius: 2, background: alpha(theme.palette.warning.main, 0.05) }}>
+                            <Typography variant="body2">Generic Phrases</Typography>
+                            <Typography variant="body2" fontWeight={600} color="warning.main">
+                              {eng.commentAnalysis.genericPct?.toFixed(1) || 0}%
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 2, borderRadius: 2, background: alpha(theme.palette.error.main, 0.05) }}>
+                            <Typography variant="body2">Duplicate Comments</Typography>
+                            <Typography variant="body2" fontWeight={600} color="error.main">
+                              {eng.commentAnalysis.duplicatePct?.toFixed(1) || 0}%
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 2, borderRadius: 2, background: alpha(theme.palette.primary.main, 0.05) }}>
+                            <Typography variant="body2">Total Analyzed</Typography>
+                            <Typography variant="body2" fontWeight={600}>
+                              {eng.commentAnalysis.total?.toLocaleString() || 0}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                )}
+
+                {/* AI Assessment */}
+                <Grid item xs={12} md={6}>
+                  <Card sx={{ height: '100%' }}>
+                    <CardContent>
+                      <Typography variant="h6" fontWeight={600} sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Psychology sx={{ color: theme.palette.info.main }} />
+                        AI Assessment
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        {eng.engagementAssessment && (
+                          <Box sx={{ p: 2, borderRadius: 2, background: alpha(theme.palette.primary.main, 0.05) }}>
+                            <Typography variant="caption" color="text.secondary" fontWeight={600}>Engagement</Typography>
+                            <Typography variant="body2" sx={{ mt: 0.5 }}>{eng.engagementAssessment}</Typography>
+                          </Box>
+                        )}
+                        {eng.ratioAnalysis && (
+                          <Box sx={{ p: 2, borderRadius: 2, background: alpha(theme.palette.info.main, 0.05) }}>
+                            <Typography variant="caption" color="text.secondary" fontWeight={600}>Ratio Analysis</Typography>
+                            <Typography variant="body2" sx={{ mt: 0.5 }}>{eng.ratioAnalysis}</Typography>
+                          </Box>
+                        )}
+                        {eng.commentQuality && (
+                          <Box sx={{ p: 2, borderRadius: 2, background: alpha(theme.palette.secondary.main, 0.05) }}>
+                            <Typography variant="caption" color="text.secondary" fontWeight={600}>Comment Quality</Typography>
+                            <Typography variant="body2" sx={{ mt: 0.5 }}>{eng.commentQuality}</Typography>
+                          </Box>
+                        )}
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                {/* Red Flags */}
+                {eng.redFlags?.length > 0 && (
+                  <Grid item xs={12} md={6}>
+                    <Card sx={{ border: `1px solid ${alpha(theme.palette.error.main, 0.3)}` }}>
+                      <CardContent>
+                        <Typography variant="h6" fontWeight={600} sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 1, color: 'error.main' }}>
+                          <Flag sx={{ color: theme.palette.error.main }} />
+                          Red Flags ({eng.redFlags.length})
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          {eng.redFlags.map((flag, idx) => (
+                            <Box
+                              key={idx}
+                              sx={{
+                                p: 2,
+                                borderRadius: 2,
+                                background: alpha(theme.palette.error.main, 0.05),
+                                borderLeft: `4px solid ${
+                                  flag.severity === 'high' ? theme.palette.error.main :
+                                  flag.severity === 'medium' ? theme.palette.warning.main :
+                                  theme.palette.grey[400]
+                                }`,
+                              }}
+                            >
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                                <Typography variant="body2" fontWeight={600}>{flag.flag}</Typography>
+                                <Chip
+                                  label={flag.severity}
+                                  size="small"
+                                  sx={{
+                                    height: 20,
+                                    fontSize: '0.65rem',
+                                    textTransform: 'uppercase',
+                                    background: flag.severity === 'high' ? alpha(theme.palette.error.main, 0.15) :
+                                      flag.severity === 'medium' ? alpha(theme.palette.warning.main, 0.15) :
+                                      alpha(theme.palette.grey[500], 0.15),
+                                    color: flag.severity === 'high' ? theme.palette.error.main :
+                                      flag.severity === 'medium' ? theme.palette.warning.main :
+                                      theme.palette.grey[600],
+                                  }}
+                                />
+                              </Box>
+                              <Typography variant="caption" color="text.secondary">{flag.details}</Typography>
+                            </Box>
+                          ))}
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                )}
+
+                {/* Positive Signals */}
+                {eng.positiveSignals?.length > 0 && (
+                  <Grid item xs={12} md={6}>
+                    <Card sx={{ border: `1px solid ${alpha(theme.palette.success.main, 0.3)}` }}>
+                      <CardContent>
+                        <Typography variant="h6" fontWeight={600} sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 1, color: 'success.main' }}>
+                          <CheckCircle sx={{ color: theme.palette.success.main }} />
+                          Positive Signals ({eng.positiveSignals.length})
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          {eng.positiveSignals.map((signal, idx) => (
+                            <Box
+                              key={idx}
+                              sx={{
+                                p: 2,
+                                borderRadius: 2,
+                                background: alpha(theme.palette.success.main, 0.05),
+                                borderLeft: `4px solid ${theme.palette.success.main}`,
+                              }}
+                            >
+                              <Typography variant="body2" fontWeight={600}>{signal.signal}</Typography>
+                              <Typography variant="caption" color="text.secondary">{signal.details}</Typography>
+                            </Box>
+                          ))}
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                )}
+
+                {/* Recommendations */}
+                {eng.recommendations?.length > 0 && (
+                  <Grid item xs={12}>
+                    <Card>
+                      <CardContent>
+                        <Typography variant="h6" fontWeight={600} sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Lightbulb sx={{ color: theme.palette.warning.main }} />
+                          Recommendations
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                          {eng.recommendations.map((rec, idx) => (
+                            <Box
+                              key={idx}
+                              sx={{
+                                p: 2,
+                                borderRadius: 2,
+                                background: alpha(theme.palette.warning.main, 0.05),
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                gap: 1,
+                              }}
+                            >
+                              <Typography variant="body2" fontWeight={600} sx={{ minWidth: 24 }}>{idx + 1}.</Typography>
+                              <Typography variant="body2">{rec}</Typography>
+                            </Box>
+                          ))}
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                )}
+              </Grid>
+            );
+          })()}
         </MotionBox>
       )}
     </Box>
