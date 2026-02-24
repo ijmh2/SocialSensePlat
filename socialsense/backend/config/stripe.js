@@ -52,10 +52,8 @@ export const TOKEN_COSTS = {
   marketing_analysis: 5,
   // Video upload (frames + Whisper transcription + GPT-4o vision)
   video_analysis: 20,
-  // Engagement validation
-  engagement_validation_base: 8,
-  engagement_comments_per_100: 2,
-  engagement_historical_analysis: 5,
+  // Engagement validation (GPT-5.2 powered, YouTube/TikTok only)
+  engagement_validation: 20,
 };
 
 export default stripe;
