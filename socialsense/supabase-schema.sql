@@ -68,11 +68,30 @@ CREATE TABLE public.analyses (
     themes JSONB DEFAULT '[]',
     sentiment_scores JSONB DEFAULT '{}',
     marketing_insights TEXT,
-    
+
     -- Raw data (for CSV export)
     raw_comments JSONB DEFAULT '[]',
     filter_stats JSONB DEFAULT '{}',
-    
+
+    -- Video Analysis
+    has_video BOOLEAN DEFAULT FALSE,
+    video_transcript TEXT,
+    video_score INTEGER,
+    priority_improvement TEXT,
+    score_breakdown JSONB,
+    notes_assessment TEXT,
+
+    -- Video Ownership
+    is_my_video BOOLEAN DEFAULT FALSE,
+    is_competitor BOOLEAN DEFAULT FALSE,
+    creator_notes TEXT,
+    competitor_notes TEXT,
+    competitor_analysis TEXT,
+    action_items JSONB DEFAULT '[]',
+
+    -- Engagement Validation (GPT-5.2)
+    engagement_validation JSONB,
+
     -- Metadata
     include_marketing BOOLEAN DEFAULT FALSE,
     product_description TEXT,
