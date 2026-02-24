@@ -55,6 +55,7 @@ const CommentAnalysis = () => {
   const [maxComments, setMaxComments] = useState(1000);
   const [includeTextAnalysis, setIncludeTextAnalysis] = useState(true);
   const [includeMarketing, setIncludeMarketing] = useState(false);
+  const [includeEngagement, setIncludeEngagement] = useState(false);
   const [productDescription, setProductDescription] = useState('');
   const [productImage, setProductImage] = useState(null);
   const [videoFile, setVideoFile] = useState(null);
@@ -109,6 +110,8 @@ const CommentAnalysis = () => {
             } else if (data.stage === 'analyzing_ai') {
               const waitTime = data.count > 1000 ? '3-5 minutes' : '30-60 seconds';
               setProgressStage(`Running AI analysis (this takes ${waitTime})...`);
+            } else if (data.stage === 'validating_engagement') {
+              setProgressStage('Validating engagement authenticity...');
             } else if (data.stage === 'fetching_details') {
               setProgressStage('Fetching video details...');
             }
@@ -150,6 +153,7 @@ const CommentAnalysis = () => {
         platform,
         include_text_analysis: includeTextAnalysis,
         include_marketing: includeMarketing,
+        include_engagement: includeEngagement,
         has_video: !!videoFile,
       });
 
@@ -199,6 +203,7 @@ const CommentAnalysis = () => {
       formData.append('max_comments', maxComments);
       formData.append('include_text_analysis', includeTextAnalysis);
       formData.append('include_marketing', includeMarketing);
+      formData.append('include_engagement', includeEngagement);
       formData.append('request_id', newRequestId); // Tell backend to track this ID
 
       if (includeMarketing) {
@@ -525,6 +530,21 @@ const CommentAnalysis = () => {
               />
             </Box>
 
+            <Box sx={{ mb: 2 }}>
+              <FormControlLabel
+                control={<Checkbox checked={includeEngagement} onChange={(e) => setIncludeEngagement(e.target.checked)} />}
+                label={
+                  <Box>
+                    <Typography variant="body1" sx={{ color: colors.textPrimary }}>Engagement Validation</Typography>
+                    <Typography variant="caption" sx={{ color: colors.textSecondary }}>
+                      Analyze engagement authenticity, detect bot patterns (+20 tokens)
+                    </Typography>
+                  </Box>
+                }
+                sx={{ display: 'flex', alignItems: 'flex-start' }}
+              />
+            </Box>
+
             <Collapse in={includeMarketing}>
               <Card sx={{ p: 2, mb: 3, borderRadius: '16px', boxShadow: shadows.sm, background: colors.background }}>
                 <Typography variant="body2" fontWeight={600} sx={{ mb: 2, color: colors.textPrimary }}>
@@ -782,6 +802,12 @@ const CommentAnalysis = () => {
                           <Typography variant="body2" sx={{ color: colors.textPrimary }}>Video Analysis</Typography>
                         </Box>
                         <Typography variant="body2" sx={{ color: colors.textPrimary }}>{estimate.breakdown.video} tokens</Typography>
+                      </Box>
+                    )}
+                    {estimate.breakdown?.engagement > 0 && (
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="body2" sx={{ color: colors.textPrimary }}>Engagement Validation</Typography>
+                        <Typography variant="body2" sx={{ color: colors.textPrimary }}>{estimate.breakdown.engagement} tokens</Typography>
                       </Box>
                     )}
                     <Divider sx={{ my: 2, opacity: 0.3 }} />

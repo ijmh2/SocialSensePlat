@@ -14,7 +14,6 @@ import analysisRoutes from './routes/analysis.js';
 import webhooksRoutes from './routes/webhooks.js';
 import analyticsRoutes from './routes/analytics.js';
 import scheduledRoutes from './routes/scheduled.js';
-import engagementRoutes from './routes/engagement.js';
 
 // Import scheduler
 import { startScheduler } from './services/scheduler.js';
@@ -78,7 +77,6 @@ app.use('/api/analysis', analysisRoutes);
 app.use('/api/webhooks', webhooksRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/scheduled', scheduledRoutes);
-app.use('/api/engagement', engagementRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

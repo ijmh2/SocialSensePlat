@@ -117,15 +117,4 @@ export const scheduledApi = {
   runNow: (id) => api.post(`/scheduled/${id}/run-now`),
 };
 
-// Engagement validation endpoints
-export const engagementApi = {
-  estimate: () => api.post('/engagement/estimate', {}),
-  getAnalyses: () => api.get('/engagement/analyses'),
-  validate: (data) => api.post('/engagement/validate', data, {
-    timeout: 120000, // 2 minutes for GPT-5.2 validation
-  }),
-  getHistory: () => api.get('/engagement/history'),
-  getValidation: (id) => api.get(`/engagement/${id}`),
-};
-
 export default api;

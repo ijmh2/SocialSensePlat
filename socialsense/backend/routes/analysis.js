@@ -29,6 +29,7 @@ import { extractTikTokVideoId, getTikTokCommentCount, scrapeTikTokComments } fro
 import { processComments, extractThemesAndKeywords } from '../services/commentProcessor.js';
 import { analyzeComments, transcribeAudio } from '../services/openai.js';
 import { aggregateSentiment } from '../services/sentiment.js';
+import { validateEngagement } from '../services/engagementValidator.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const router = express.Router();
@@ -79,7 +80,7 @@ router.post('/estimate', authenticate, async (req, res) => {
   }, 30000); // 30 second timeout
 
   try {
-    const { url, platform, include_text_analysis = true, include_marketing = false, has_video = false } = req.body;
+    const { url, platform, include_text_analysis = true, include_marketing = false, include_engagement = false, has_video = false } = req.body;
 
     if (!url || !platform) {
       clearTimeout(timeout);
@@ -189,6 +190,11 @@ router.post('/estimate', authenticate, async (req, res) => {
       tokenCost += TOKEN_COSTS.video_analysis;
     }
 
+    // Engagement validation costs 20 tokens (GPT-5.2 powered)
+    if (include_engagement) {
+      tokenCost += TOKEN_COSTS.engagement_validation;
+    }
+
     tokenCost = Math.max(1, tokenCost);
 
     const userBalance = req.profile?.token_balance || 0;
@@ -211,6 +217,7 @@ router.post('/estimate', authenticate, async (req, res) => {
         text_analysis: include_text_analysis ? TOKEN_COSTS.text_analysis : 0,
         marketing: include_marketing ? TOKEN_COSTS.marketing_analysis : 0,
         video: has_video ? TOKEN_COSTS.video_analysis : 0,
+        engagement: include_engagement ? TOKEN_COSTS.engagement_validation : 0,
       },
     });
   } catch (error) {
@@ -301,6 +308,7 @@ router.post('/comments', authenticate, uploadFields, uploadRateLimiter, async (r
       max_comments = 1000,
       include_text_analysis = true,
       include_marketing = false,
+      include_engagement = false,
       product_description,
       request_id,
       is_my_video = false,
@@ -396,8 +404,10 @@ router.post('/comments', authenticate, uploadFields, uploadRateLimiter, async (r
 
     const includeText = include_text_analysis === 'true' || include_text_analysis === true;
     const includeMkt = include_marketing === 'true' || include_marketing === true;
+    const includeEng = include_engagement === 'true' || include_engagement === true;
     if (includeText) tokenCost += TOKEN_COSTS.text_analysis;
     if (includeMkt) tokenCost += TOKEN_COSTS.marketing_analysis;
+    if (includeEng) tokenCost += TOKEN_COSTS.engagement_validation;
 
     // Video upload costs 20 tokens (Whisper + GPT-4o vision)
     if (videoFile) {
@@ -405,7 +415,7 @@ router.post('/comments', authenticate, uploadFields, uploadRateLimiter, async (r
       console.log(`[Analysis] Video file detected: ${videoFile.originalname} (${(videoFile.size / 1024 / 1024).toFixed(1)}MB) - adding ${TOKEN_COSTS.video_analysis} tokens`);
     }
 
-    console.log(`[Analysis] Total token cost: ${tokenCost} (scraping: ${platform === 'youtube' ? Math.max(1, Math.ceil(commentsToFetch / 1000)) : Math.max(1, Math.ceil(commentsToFetch / 100))}, text: ${includeText ? TOKEN_COSTS.text_analysis : 0}, marketing: ${includeMkt ? TOKEN_COSTS.marketing_analysis : 0}, video: ${videoFile ? TOKEN_COSTS.video_analysis : 0})`);
+    console.log(`[Analysis] Total token cost: ${tokenCost} (scraping: ${platform === 'youtube' ? Math.max(1, Math.ceil(commentsToFetch / 1000)) : Math.max(1, Math.ceil(commentsToFetch / 100))}, text: ${includeText ? TOKEN_COSTS.text_analysis : 0}, marketing: ${includeMkt ? TOKEN_COSTS.marketing_analysis : 0}, video: ${videoFile ? TOKEN_COSTS.video_analysis : 0}, engagement: ${includeEng ? TOKEN_COSTS.engagement_validation : 0})`);
 
     // 3. Check Balance & Deduct
     const { data: deductResult, error: deductError } = await supabaseAdmin.rpc('deduct_tokens', {
@@ -456,6 +466,7 @@ router.post('/comments', authenticate, uploadFields, uploadRateLimiter, async (r
       commentsToFetch,
       includeText,
       includeMkt,
+      includeEng,
       product_description,
       productImagePath: productImageFile?.path,
       videoFilePath: videoFile?.path,
@@ -466,6 +477,7 @@ router.post('/comments', authenticate, uploadFields, uploadRateLimiter, async (r
       creatorNotes: creator_notes || null,
       competitorNotes: competitor_notes || null,
       harshFeedback,
+      videoDetails,
     }).catch(err => console.error('Background Job Failed:', err));
 
     // 6. Return Immediately
@@ -871,11 +883,12 @@ async function extractAudio(videoPath, timeoutMs = 5 * 60 * 1000) {
   });
 }
 
-// Background Worker Function (Unified: comments + optional video)
+// Background Worker Function (Unified: comments + optional video + optional engagement)
 async function processAnalysisJob({
   analysisId, videoId, platform, commentsToFetch,
-  includeText, includeMkt, product_description, productImagePath, videoFilePath, request_id, startTime,
-  isMyVideo = false, isCompetitor = false, creatorNotes = null, competitorNotes = null, harshFeedback = false
+  includeText, includeMkt, includeEng, product_description, productImagePath, videoFilePath, request_id, startTime,
+  isMyVideo = false, isCompetitor = false, creatorNotes = null, competitorNotes = null, harshFeedback = false,
+  videoDetails = null
 }) {
   try {
     // 1. Scrape Comments
@@ -990,9 +1003,30 @@ async function processAnalysisJob({
       };
     }
 
+    // 8. Engagement Validation (if requested)
+    let engagementResult = null;
+    if (includeEng && videoDetails) {
+      if (request_id) progressMap.set(request_id, { stage: 'validating_engagement', count: rawComments.length, percent: 92 });
+      try {
+        console.log('[Analysis] Running engagement validation...');
+        engagementResult = await validateEngagement(videoDetails, processedComments, platform);
+        console.log(`[Analysis] Engagement validation complete - Score: ${engagementResult.authenticityScore}`);
+      } catch (engErr) {
+        console.error('[Analysis] Engagement validation failed:', engErr);
+        engagementResult = {
+          authenticityScore: null,
+          verdict: 'Analysis Error',
+          engagementAssessment: `Validation failed: ${engErr.message}`,
+          redFlags: [],
+          positiveSignals: [],
+          recommendations: ['Please try again.'],
+        };
+      }
+    }
+
     const processingTime = Date.now() - startTime;
 
-    // 8. Final Update
+    // 9. Final Update
     const { error: finalMetaError } = await supabaseAdmin.from('analyses').update({
       status: 'completed',
       summary: analysisResult.summary,
@@ -1007,6 +1041,7 @@ async function processAnalysisJob({
       marketing_insights: analysisResult.marketingInsights || null,
       competitor_analysis: analysisResult.competitorAnalysis || null,
       action_items: analysisResult.actionItems || [],
+      engagement_validation: engagementResult || null,
     }).eq('id', analysisId);
 
     console.log('[Analysis] Final save - videoScore:', analysisResult.videoScore, 'scoreBreakdown:', analysisResult.scoreBreakdown ? 'found' : 'null', 'priorityImprovement:', analysisResult.priorityImprovement ? 'found' : 'null', 'actionItems:', analysisResult.actionItems?.length || 0);
