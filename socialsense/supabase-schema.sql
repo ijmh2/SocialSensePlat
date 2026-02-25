@@ -32,6 +32,14 @@ CREATE TABLE public.profiles (
     token_balance INTEGER DEFAULT 0 NOT NULL,
     total_tokens_purchased INTEGER DEFAULT 0 NOT NULL,
     total_analyses_run INTEGER DEFAULT 0 NOT NULL,
+
+    -- Subscription fields
+    subscription_status TEXT DEFAULT 'none' CHECK (subscription_status IN ('none', 'active', 'canceling', 'past_due', 'canceled')),
+    subscription_plan TEXT,
+    subscription_id TEXT,
+    subscription_period_end TIMESTAMP WITH TIME ZONE,
+    subscription_tokens_remaining INTEGER DEFAULT 0,
+
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

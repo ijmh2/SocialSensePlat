@@ -10,12 +10,19 @@ import {
   CircularProgress,
   Divider,
   Alert,
+  Tabs,
+  Tab,
+  alpha,
 } from '@mui/material';
 import {
   CheckCircle,
   Star,
   Token,
   Refresh,
+  CreditCard,
+  Autorenew,
+  Cancel,
+  Schedule,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -54,12 +61,47 @@ const FALLBACK_PACKAGES = [
   },
 ];
 
+const FALLBACK_SUBSCRIPTION_PLANS = [
+  {
+    id: 'sub_starter',
+    name: 'Starter',
+    tokens_per_month: 150,
+    price: 1499,
+    description: 'Perfect for content creators',
+    features: ['150 tokens/month', 'Rollover unused tokens (max 300)', 'Priority support'],
+    popular: false,
+  },
+  {
+    id: 'sub_pro',
+    name: 'Pro',
+    tokens_per_month: 500,
+    price: 3999,
+    description: 'For agencies and power users',
+    features: ['500 tokens/month', 'Rollover unused tokens (max 1000)', 'Priority support', '20% bonus on token purchases'],
+    popular: true,
+  },
+  {
+    id: 'sub_enterprise',
+    name: 'Enterprise',
+    tokens_per_month: 1500,
+    price: 9999,
+    description: 'Unlimited power for large teams',
+    features: ['1500 tokens/month', 'Unlimited token rollover', 'Dedicated support', '30% bonus on token purchases', 'API access (coming soon)'],
+    popular: false,
+  },
+];
+
 const Tokens = () => {
   const { tokenBalance } = useAuth();
 
+  const [tab, setTab] = useState(0);
   const [packages, setPackages] = useState(FALLBACK_PACKAGES);
+  const [subscriptionPlans, setSubscriptionPlans] = useState(FALLBACK_SUBSCRIPTION_PLANS);
+  const [currentSubscription, setCurrentSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(null);
+  const [subscribing, setSubscribing] = useState(null);
+  const [cancelingSubscription, setCancelingSubscription] = useState(false);
   const [transactions, setTransactions] = useState([]);
   const [error, setError] = useState('');
 
@@ -72,6 +114,7 @@ const Tokens = () => {
       setLoading(true);
       setError('');
 
+      // Load packages
       try {
         const packagesRes = await tokensApi.getPackages();
         if (packagesRes.data?.packages?.length > 0) {
@@ -81,6 +124,26 @@ const Tokens = () => {
         console.warn('Failed to load packages, using defaults:', pkgError);
       }
 
+      // Load subscription plans
+      try {
+        const plansRes = await tokensApi.getSubscriptionPlans();
+        if (plansRes.data?.plans?.length > 0) {
+          setSubscriptionPlans(plansRes.data.plans);
+        }
+      } catch (planError) {
+        console.warn('Failed to load subscription plans, using defaults:', planError);
+      }
+
+      // Load current subscription
+      try {
+        const subRes = await tokensApi.getSubscription();
+        setCurrentSubscription(subRes.data);
+      } catch (subError) {
+        console.warn('Failed to load subscription:', subError);
+        setCurrentSubscription({ active: false });
+      }
+
+      // Load transactions
       try {
         const transactionsRes = await authApi.getTransactions({ limit: 10 });
         setTransactions(transactionsRes.data?.transactions || []);
@@ -101,7 +164,6 @@ const Tokens = () => {
     try {
       const { data } = await tokensApi.createCheckout(packageId);
       if (data.url) {
-        // Validate URL is from Stripe before redirecting (security)
         if (!data.url.startsWith('https://checkout.stripe.com/')) {
           throw new Error('Invalid checkout URL');
         }
@@ -114,6 +176,58 @@ const Tokens = () => {
       toast.error(err.response?.data?.error || 'Failed to start checkout. Please try again.');
     } finally {
       setPurchasing(null);
+    }
+  };
+
+  const handleSubscribe = async (planId) => {
+    setSubscribing(planId);
+    try {
+      const { data } = await tokensApi.subscribe(planId);
+      if (data.url) {
+        if (!data.url.startsWith('https://checkout.stripe.com/')) {
+          throw new Error('Invalid checkout URL');
+        }
+        window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL received');
+      }
+    } catch (err) {
+      console.error('Subscribe error:', err);
+      toast.error(err.response?.data?.error || 'Failed to start subscription. Please try again.');
+    } finally {
+      setSubscribing(null);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    if (!window.confirm('Are you sure you want to cancel your subscription? You will keep access until the end of your billing period.')) {
+      return;
+    }
+
+    setCancelingSubscription(true);
+    try {
+      await tokensApi.cancelSubscription();
+      toast.success('Subscription will be canceled at the end of your billing period');
+      loadData();
+    } catch (err) {
+      console.error('Cancel subscription error:', err);
+      toast.error(err.response?.data?.error || 'Failed to cancel subscription');
+    } finally {
+      setCancelingSubscription(false);
+    }
+  };
+
+  const handleReactivateSubscription = async () => {
+    setCancelingSubscription(true);
+    try {
+      await tokensApi.reactivateSubscription();
+      toast.success('Subscription reactivated!');
+      loadData();
+    } catch (err) {
+      console.error('Reactivate subscription error:', err);
+      toast.error(err.response?.data?.error || 'Failed to reactivate subscription');
+    } finally {
+      setCancelingSubscription(false);
     }
   };
 
@@ -155,10 +269,10 @@ const Tokens = () => {
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto' }}>
       <Typography variant="h4" fontWeight={700} sx={{ mb: 1, color: colors.textPrimary }}>
-        Token Packages
+        Tokens & Subscriptions
       </Typography>
       <Typography variant="body1" sx={{ color: colors.textSecondary, mb: 4 }}>
-        Purchase tokens to run analyses. No subscriptions, pay as you go.
+        Purchase tokens one-time or subscribe for monthly credits
       </Typography>
 
       {error && (
@@ -187,6 +301,8 @@ const Tokens = () => {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 2,
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -208,97 +324,349 @@ const Tokens = () => {
             <Typography variant="h3" fontWeight={700} className="gradient-text font-mono">{tokenBalance}</Typography>
           </Box>
         </Box>
-        <Typography variant="body2" sx={{ color: colors.textMuted }}>tokens</Typography>
+
+        {currentSubscription?.active && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Chip
+              icon={<Autorenew sx={{ fontSize: 18 }} />}
+              label={`${currentSubscription.plan?.name || 'Active'} Subscription`}
+              color="primary"
+              sx={{ fontWeight: 600 }}
+            />
+            {currentSubscription.period_end && (
+              <Typography variant="caption" sx={{ color: colors.textMuted }}>
+                {currentSubscription.status === 'canceling' ? 'Ends' : 'Renews'}: {formatDate(currentSubscription.period_end)}
+              </Typography>
+            )}
+          </Box>
+        )}
       </Box>
 
-      {/* Token Packages */}
+      {/* Tabs */}
+      <Tabs
+        value={tab}
+        onChange={(e, v) => setTab(v)}
+        sx={{ mb: 4, borderBottom: `1px solid ${colors.border}` }}
+      >
+        <Tab icon={<CreditCard sx={{ fontSize: 20 }} />} iconPosition="start" label="One-Time Packs" />
+        <Tab icon={<Autorenew sx={{ fontSize: 20 }} />} iconPosition="start" label="Subscriptions" />
+      </Tabs>
+
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 6 }}>
           <CircularProgress />
         </Box>
       ) : (
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          {packages.map((pkg, index) => (
-            <Grid item xs={12} md={4} key={pkg.id}>
-              <MotionBox
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                sx={{
-                  height: '100%',
-                  position: 'relative',
-                  background: colors.background,
-                  border: pkg.popular ? `2px solid ${colors.primary}` : `1px solid ${colors.border}`,
-                  borderRadius: '16px',
-                  boxShadow: pkg.popular ? shadows.md : shadows.card,
-                  overflow: 'visible',
-                }}
-              >
-                {pkg.popular && (
-                  <Chip
-                    icon={<Star sx={{ fontSize: 16, color: 'white' }} />}
-                    label="Most Popular"
-                    size="small"
+        <>
+          {/* One-Time Token Packages */}
+          {tab === 0 && (
+            <Grid container spacing={3} sx={{ mb: 4 }}>
+              {packages.map((pkg, index) => (
+                <Grid item xs={12} md={4} key={pkg.id}>
+                  <MotionBox
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
                     sx={{
-                      position: 'absolute',
-                      top: -12,
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      background: gradients.primary,
-                      color: 'white',
-                      fontWeight: 600,
-                      '.MuiChip-icon': { color: 'white' },
-                    }}
-                  />
-                )}
-                <Box sx={{ p: 4, textAlign: 'center' }}>
-                  <Typography variant="h5" fontWeight={700} sx={{ mb: 1, color: colors.textPrimary }}>
-                    {pkg.name}
-                  </Typography>
-                  <Typography variant="h3" fontWeight={700} className="gradient-text font-mono" sx={{ mb: 2 }}>
-                    ${(pkg.price / 100).toFixed(2)}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: colors.textSecondary, mb: 3 }}>
-                    {pkg.description}
-                  </Typography>
-
-                  <Divider sx={{ my: 2, borderColor: colors.border }} />
-
-                  <Box sx={{ textAlign: 'left', mb: 3 }}>
-                    {getPackageFeatures(pkg.tokens).map((feature) => (
-                      <Box key={feature} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                        <CheckCircle sx={{ fontSize: 18, color: colors.success }} />
-                        <Typography variant="body2" sx={{ color: colors.textPrimary }}>{feature}</Typography>
-                      </Box>
-                    ))}
-                  </Box>
-
-                  <Button
-                    fullWidth
-                    variant={pkg.popular ? 'contained' : 'outlined'}
-                    size="large"
-                    onClick={() => handlePurchase(pkg.id)}
-                    disabled={purchasing === pkg.id}
-                    sx={{
-                      py: 1.5,
-                      ...(pkg.popular ? {} : {
-                        background: colors.background,
-                        borderColor: colors.border,
-                        color: colors.textPrimary,
-                        '&:hover': {
-                          borderColor: colors.primary,
-                          background: colors.surface,
-                        },
-                      }),
+                      height: '100%',
+                      position: 'relative',
+                      background: colors.background,
+                      border: pkg.popular ? `2px solid ${colors.primary}` : `1px solid ${colors.border}`,
+                      borderRadius: '16px',
+                      boxShadow: pkg.popular ? shadows.md : shadows.card,
+                      overflow: 'visible',
                     }}
                   >
-                    {purchasing === pkg.id ? <CircularProgress size={24} color="inherit" /> : 'Purchase'}
-                  </Button>
-                </Box>
-              </MotionBox>
+                    {pkg.popular && (
+                      <Chip
+                        icon={<Star sx={{ fontSize: 16, color: 'white' }} />}
+                        label="Most Popular"
+                        size="small"
+                        sx={{
+                          position: 'absolute',
+                          top: -12,
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          background: gradients.primary,
+                          color: 'white',
+                          fontWeight: 600,
+                          '.MuiChip-icon': { color: 'white' },
+                        }}
+                      />
+                    )}
+                    <Box sx={{ p: 4, textAlign: 'center' }}>
+                      <Typography variant="h5" fontWeight={700} sx={{ mb: 1, color: colors.textPrimary }}>
+                        {pkg.name}
+                      </Typography>
+                      <Typography variant="h3" fontWeight={700} className="gradient-text font-mono" sx={{ mb: 2 }}>
+                        ${(pkg.price / 100).toFixed(2)}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: colors.textSecondary, mb: 3 }}>
+                        {pkg.description}
+                      </Typography>
+
+                      <Divider sx={{ my: 2, borderColor: colors.border }} />
+
+                      <Box sx={{ textAlign: 'left', mb: 3 }}>
+                        {getPackageFeatures(pkg.tokens).map((feature) => (
+                          <Box key={feature} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                            <CheckCircle sx={{ fontSize: 18, color: colors.success }} />
+                            <Typography variant="body2" sx={{ color: colors.textPrimary }}>{feature}</Typography>
+                          </Box>
+                        ))}
+                      </Box>
+
+                      <Button
+                        fullWidth
+                        variant={pkg.popular ? 'contained' : 'outlined'}
+                        size="large"
+                        onClick={() => handlePurchase(pkg.id)}
+                        disabled={purchasing === pkg.id}
+                        sx={{
+                          py: 1.5,
+                          ...(pkg.popular ? {} : {
+                            background: colors.background,
+                            borderColor: colors.border,
+                            color: colors.textPrimary,
+                            '&:hover': {
+                              borderColor: colors.primary,
+                              background: colors.surface,
+                            },
+                          }),
+                        }}
+                      >
+                        {purchasing === pkg.id ? <CircularProgress size={24} color="inherit" /> : 'Purchase'}
+                      </Button>
+                    </Box>
+                  </MotionBox>
+                </Grid>
+              ))}
             </Grid>
-          ))}
-        </Grid>
+          )}
+
+          {/* Subscription Plans */}
+          {tab === 1 && (
+            <>
+              {/* Current Subscription Status */}
+              {currentSubscription?.active && (
+                <Card sx={{ mb: 4, border: `2px solid ${colors.primary}`, borderRadius: '16px' }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+                      <Box>
+                        <Typography variant="h6" fontWeight={700} sx={{ color: colors.textPrimary, display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Autorenew sx={{ color: colors.primary }} />
+                          {currentSubscription.plan?.name || 'Active'} Subscription
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: colors.textSecondary, mt: 0.5 }}>
+                          {currentSubscription.plan?.tokens_per_month || 0} tokens/month
+                          {currentSubscription.period_end && (
+                            <> &bull; {currentSubscription.status === 'canceling' ? 'Ends' : 'Renews'} on {formatDate(currentSubscription.period_end)}</>
+                          )}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', gap: 2 }}>
+                        {currentSubscription.status === 'canceling' ? (
+                          <Button
+                            variant="contained"
+                            onClick={handleReactivateSubscription}
+                            disabled={cancelingSubscription}
+                            startIcon={cancelingSubscription ? <CircularProgress size={18} /> : <Autorenew />}
+                          >
+                            Reactivate
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outlined"
+                            color="error"
+                            onClick={handleCancelSubscription}
+                            disabled={cancelingSubscription}
+                            startIcon={cancelingSubscription ? <CircularProgress size={18} /> : <Cancel />}
+                          >
+                            Cancel
+                          </Button>
+                        )}
+                      </Box>
+                    </Box>
+                    {currentSubscription.status === 'canceling' && (
+                      <Alert severity="warning" sx={{ mt: 2 }}>
+                        Your subscription is set to cancel at the end of your billing period. You will keep access until then.
+                      </Alert>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              <Grid container spacing={3} sx={{ mb: 4 }}>
+                {subscriptionPlans.map((plan, index) => {
+                  const isCurrentPlan = currentSubscription?.plan_id === plan.id;
+
+                  return (
+                    <Grid item xs={12} md={4} key={plan.id}>
+                      <MotionBox
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        sx={{
+                          height: '100%',
+                          position: 'relative',
+                          background: colors.background,
+                          border: plan.popular ? `2px solid ${colors.primary}` : isCurrentPlan ? `2px solid ${colors.success}` : `1px solid ${colors.border}`,
+                          borderRadius: '16px',
+                          boxShadow: plan.popular ? shadows.md : shadows.card,
+                          overflow: 'visible',
+                        }}
+                      >
+                        {plan.popular && !isCurrentPlan && (
+                          <Chip
+                            icon={<Star sx={{ fontSize: 16, color: 'white' }} />}
+                            label="Most Popular"
+                            size="small"
+                            sx={{
+                              position: 'absolute',
+                              top: -12,
+                              left: '50%',
+                              transform: 'translateX(-50%)',
+                              background: gradients.primary,
+                              color: 'white',
+                              fontWeight: 600,
+                              '.MuiChip-icon': { color: 'white' },
+                            }}
+                          />
+                        )}
+                        {isCurrentPlan && (
+                          <Chip
+                            icon={<CheckCircle sx={{ fontSize: 16, color: 'white' }} />}
+                            label="Current Plan"
+                            size="small"
+                            sx={{
+                              position: 'absolute',
+                              top: -12,
+                              left: '50%',
+                              transform: 'translateX(-50%)',
+                              background: colors.success,
+                              color: 'white',
+                              fontWeight: 600,
+                              '.MuiChip-icon': { color: 'white' },
+                            }}
+                          />
+                        )}
+                        <Box sx={{ p: 4, textAlign: 'center' }}>
+                          <Typography variant="h5" fontWeight={700} sx={{ mb: 1, color: colors.textPrimary }}>
+                            {plan.name}
+                          </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', mb: 1 }}>
+                            <Typography variant="h3" fontWeight={700} className="gradient-text font-mono">
+                              ${(plan.price / 100).toFixed(2)}
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: colors.textMuted, ml: 0.5 }}>/month</Typography>
+                          </Box>
+                          <Chip
+                            label={`${plan.tokens_per_month} tokens/month`}
+                            size="small"
+                            sx={{
+                              mb: 2,
+                              background: alpha(colors.primary, 0.1),
+                              color: colors.primary,
+                              fontWeight: 600,
+                            }}
+                          />
+                          <Typography variant="body2" sx={{ color: colors.textSecondary, mb: 3 }}>
+                            {plan.description}
+                          </Typography>
+
+                          <Divider sx={{ my: 2, borderColor: colors.border }} />
+
+                          <Box sx={{ textAlign: 'left', mb: 3 }}>
+                            {plan.features.map((feature) => (
+                              <Box key={feature} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                <CheckCircle sx={{ fontSize: 18, color: colors.success }} />
+                                <Typography variant="body2" sx={{ color: colors.textPrimary }}>{feature}</Typography>
+                              </Box>
+                            ))}
+                          </Box>
+
+                          <Button
+                            fullWidth
+                            variant={plan.popular && !isCurrentPlan ? 'contained' : 'outlined'}
+                            size="large"
+                            onClick={() => handleSubscribe(plan.id)}
+                            disabled={subscribing === plan.id || isCurrentPlan || currentSubscription?.active}
+                            sx={{
+                              py: 1.5,
+                              ...(plan.popular && !isCurrentPlan ? {} : {
+                                background: colors.background,
+                                borderColor: isCurrentPlan ? colors.success : colors.border,
+                                color: isCurrentPlan ? colors.success : colors.textPrimary,
+                                '&:hover': {
+                                  borderColor: colors.primary,
+                                  background: colors.surface,
+                                },
+                              }),
+                            }}
+                          >
+                            {subscribing === plan.id ? (
+                              <CircularProgress size={24} color="inherit" />
+                            ) : isCurrentPlan ? (
+                              'Current Plan'
+                            ) : currentSubscription?.active ? (
+                              'Cancel current first'
+                            ) : (
+                              'Subscribe'
+                            )}
+                          </Button>
+                        </Box>
+                      </MotionBox>
+                    </Grid>
+                  );
+                })}
+              </Grid>
+
+              {/* Subscription Benefits */}
+              <Card sx={{ mb: 4, borderRadius: '16px', background: alpha(colors.primary, 0.03), border: `1px solid ${colors.border}` }}>
+                <CardContent sx={{ p: 3 }}>
+                  <Typography variant="h6" fontWeight={600} sx={{ mb: 2, color: colors.textPrimary }}>
+                    Why Subscribe?
+                  </Typography>
+                  <Grid container spacing={3}>
+                    <Grid item xs={12} md={4}>
+                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                        <Schedule sx={{ color: colors.primary, mt: 0.5 }} />
+                        <Box>
+                          <Typography variant="body2" fontWeight={600} sx={{ color: colors.textPrimary }}>Save up to 30%</Typography>
+                          <Typography variant="caption" sx={{ color: colors.textSecondary }}>
+                            Monthly tokens are more cost-effective than one-time purchases
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12} md={4}>
+                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                        <Autorenew sx={{ color: colors.primary, mt: 0.5 }} />
+                        <Box>
+                          <Typography variant="body2" fontWeight={600} sx={{ color: colors.textPrimary }}>Rollover Tokens</Typography>
+                          <Typography variant="caption" sx={{ color: colors.textSecondary }}>
+                            Unused tokens roll over to next month (limits apply per plan)
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12} md={4}>
+                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                        <Star sx={{ color: colors.primary, mt: 0.5 }} />
+                        <Box>
+                          <Typography variant="body2" fontWeight={600} sx={{ color: colors.textPrimary }}>Priority Support</Typography>
+                          <Typography variant="caption" sx={{ color: colors.textSecondary }}>
+                            Get faster responses and dedicated help when you need it
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </>
       )}
 
       {/* Transaction History */}
@@ -367,7 +735,7 @@ const Tokens = () => {
           Token Usage Guide
         </Typography>
         <Grid container spacing={3}>
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} md={3}>
             <Typography variant="body2" fontWeight={600} sx={{ mb: 1, color: colors.textPrimary }}>
               YouTube Comments
             </Typography>
@@ -375,7 +743,7 @@ const Tokens = () => {
               1 token per 1,000 comments scraped
             </Typography>
           </Grid>
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} md={3}>
             <Typography variant="body2" fontWeight={600} sx={{ mb: 1, color: colors.textPrimary }}>
               TikTok Comments
             </Typography>
@@ -383,12 +751,20 @@ const Tokens = () => {
               1 token per 100 comments scraped
             </Typography>
           </Grid>
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} md={3}>
             <Typography variant="body2" fontWeight={600} sx={{ mb: 1, color: colors.textPrimary }}>
               AI Analysis
             </Typography>
             <Typography variant="body2" sx={{ color: colors.textSecondary }}>
               +5 tokens for text analysis, +5 for marketing insights
+            </Typography>
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <Typography variant="body2" fontWeight={600} sx={{ mb: 1, color: colors.textPrimary }}>
+              Engagement Check
+            </Typography>
+            <Typography variant="body2" sx={{ color: colors.textSecondary }}>
+              +20 tokens for influencer authenticity validation
             </Typography>
           </Grid>
         </Grid>

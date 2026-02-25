@@ -1,6 +1,6 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
-import stripe, { TOKEN_PACKAGES, TOKEN_COSTS } from '../config/stripe.js';
+import stripe, { TOKEN_PACKAGES, TOKEN_COSTS, SUBSCRIPTION_PLANS } from '../config/stripe.js';
 import { supabaseAdmin } from '../config/supabase.js';
 import { authenticate } from '../middleware/auth.js';
 
@@ -20,6 +20,14 @@ const router = express.Router();
  */
 router.get('/packages', (req, res) => {
   res.json({ packages: TOKEN_PACKAGES });
+});
+
+/**
+ * GET /api/tokens/subscriptions
+ * Get available subscription plans
+ */
+router.get('/subscriptions', (req, res) => {
+  res.json({ plans: SUBSCRIPTION_PLANS });
 });
 
 /**
@@ -333,6 +341,208 @@ router.get('/verify-session/:sessionId', authenticate, async (req, res) => {
   } catch (error) {
     console.error('Verify session error:', error);
     res.status(500).json({ error: 'Failed to verify session' });
+  }
+});
+
+/**
+ * GET /api/tokens/subscription
+ * Get current subscription status
+ */
+router.get('/subscription', authenticate, async (req, res) => {
+  try {
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('subscription_status, subscription_plan, subscription_id, subscription_period_end, subscription_tokens_remaining')
+      .eq('id', req.user.id)
+      .single();
+
+    if (!profile || !profile.subscription_status || profile.subscription_status === 'none') {
+      return res.json({ active: false });
+    }
+
+    const plan = SUBSCRIPTION_PLANS.find(p => p.id === profile.subscription_plan);
+
+    res.json({
+      active: profile.subscription_status === 'active',
+      status: profile.subscription_status,
+      plan: plan || null,
+      plan_id: profile.subscription_plan,
+      period_end: profile.subscription_period_end,
+      tokens_remaining: profile.subscription_tokens_remaining || 0,
+    });
+  } catch (error) {
+    console.error('Get subscription error:', error);
+    res.status(500).json({ error: 'Failed to get subscription status' });
+  }
+});
+
+/**
+ * POST /api/tokens/subscribe
+ * Create a subscription checkout session
+ */
+router.post('/subscribe', authenticate, checkoutLimiter, async (req, res) => {
+  try {
+    const { plan_id } = req.body;
+
+    // Find the plan
+    const plan = SUBSCRIPTION_PLANS.find(p => p.id === plan_id);
+    if (!plan) {
+      return res.status(400).json({ error: 'Invalid subscription plan' });
+    }
+
+    // Check if user already has an active subscription
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('subscription_status')
+      .eq('id', req.user.id)
+      .single();
+
+    if (profile?.subscription_status === 'active') {
+      return res.status(400).json({ error: 'You already have an active subscription. Please cancel first to switch plans.' });
+    }
+
+    // Get or create Stripe customer
+    let { data: stripeCustomer } = await supabaseAdmin
+      .from('stripe_customers')
+      .select('stripe_customer_id')
+      .eq('user_id', req.user.id)
+      .single();
+
+    let customerId;
+
+    if (!stripeCustomer) {
+      const customer = await stripe.customers.create({
+        email: req.user.email,
+        metadata: {
+          supabase_user_id: req.user.id,
+        },
+      });
+
+      await supabaseAdmin.from('stripe_customers').insert({
+        user_id: req.user.id,
+        stripe_customer_id: customer.id,
+      });
+
+      customerId = customer.id;
+    } else {
+      customerId = stripeCustomer.stripe_customer_id;
+    }
+
+    // Create a Stripe Price for the subscription (or use existing)
+    // In production, you'd create these prices in Stripe Dashboard and store the price IDs
+    // For now, we'll create them dynamically
+    const price = await stripe.prices.create({
+      currency: 'usd',
+      unit_amount: plan.price,
+      recurring: { interval: 'month' },
+      product_data: {
+        name: `CommentIQ ${plan.name} Subscription`,
+        metadata: {
+          plan_id: plan.id,
+          tokens_per_month: plan.tokens_per_month.toString(),
+        },
+      },
+    });
+
+    // Create subscription checkout session
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price: price.id,
+          quantity: 1,
+        },
+      ],
+      mode: 'subscription',
+      success_url: `${process.env.FRONTEND_URL}/tokens/success?session_id={CHECKOUT_SESSION_ID}&type=subscription`,
+      cancel_url: `${process.env.FRONTEND_URL}/tokens`,
+      metadata: {
+        user_id: req.user.id,
+        plan_id: plan.id,
+        tokens_per_month: plan.tokens_per_month.toString(),
+      },
+      subscription_data: {
+        metadata: {
+          user_id: req.user.id,
+          plan_id: plan.id,
+          tokens_per_month: plan.tokens_per_month.toString(),
+        },
+      },
+    });
+
+    res.json({ url: session.url, session_id: session.id });
+  } catch (error) {
+    console.error('Subscription checkout error:', error);
+    res.status(500).json({ error: 'Failed to create subscription checkout' });
+  }
+});
+
+/**
+ * POST /api/tokens/subscription/cancel
+ * Cancel the current subscription
+ */
+router.post('/subscription/cancel', authenticate, async (req, res) => {
+  try {
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('subscription_id, subscription_status')
+      .eq('id', req.user.id)
+      .single();
+
+    if (!profile?.subscription_id || profile.subscription_status !== 'active') {
+      return res.status(400).json({ error: 'No active subscription to cancel' });
+    }
+
+    // Cancel at period end (user keeps access until billing period ends)
+    await stripe.subscriptions.update(profile.subscription_id, {
+      cancel_at_period_end: true,
+    });
+
+    // Update profile
+    await supabaseAdmin
+      .from('profiles')
+      .update({ subscription_status: 'canceling' })
+      .eq('id', req.user.id);
+
+    res.json({ success: true, message: 'Subscription will be canceled at the end of the billing period' });
+  } catch (error) {
+    console.error('Cancel subscription error:', error);
+    res.status(500).json({ error: 'Failed to cancel subscription' });
+  }
+});
+
+/**
+ * POST /api/tokens/subscription/reactivate
+ * Reactivate a canceled subscription (before period ends)
+ */
+router.post('/subscription/reactivate', authenticate, async (req, res) => {
+  try {
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('subscription_id, subscription_status')
+      .eq('id', req.user.id)
+      .single();
+
+    if (!profile?.subscription_id || profile.subscription_status !== 'canceling') {
+      return res.status(400).json({ error: 'No subscription to reactivate' });
+    }
+
+    // Remove cancellation
+    await stripe.subscriptions.update(profile.subscription_id, {
+      cancel_at_period_end: false,
+    });
+
+    // Update profile
+    await supabaseAdmin
+      .from('profiles')
+      .update({ subscription_status: 'active' })
+      .eq('id', req.user.id);
+
+    res.json({ success: true, message: 'Subscription reactivated' });
+  } catch (error) {
+    console.error('Reactivate subscription error:', error);
+    res.status(500).json({ error: 'Failed to reactivate subscription' });
   }
 });
 

@@ -12,7 +12,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2023-10-16',
 });
 
-// Token package configurations
+// Token package configurations (one-time purchases)
 export const TOKEN_PACKAGES = [
   {
     id: 'tokens_100',
@@ -36,6 +36,52 @@ export const TOKEN_PACKAGES = [
     tokens: 1000,
     price: 3499, // cents ($34.99 - 30% discount)
     description: 'Best for agencies and power users',
+    popular: false,
+  },
+];
+
+// Subscription plans (monthly recurring)
+export const SUBSCRIPTION_PLANS = [
+  {
+    id: 'sub_starter',
+    name: 'Starter',
+    tokens_per_month: 150,
+    price: 1499, // cents ($14.99/month)
+    description: 'Perfect for content creators',
+    features: [
+      '150 tokens/month',
+      'Rollover unused tokens (max 300)',
+      'Priority support',
+    ],
+    popular: false,
+  },
+  {
+    id: 'sub_pro',
+    name: 'Pro',
+    tokens_per_month: 500,
+    price: 3999, // cents ($39.99/month)
+    description: 'For agencies and power users',
+    features: [
+      '500 tokens/month',
+      'Rollover unused tokens (max 1000)',
+      'Priority support',
+      '20% bonus on token purchases',
+    ],
+    popular: true,
+  },
+  {
+    id: 'sub_enterprise',
+    name: 'Enterprise',
+    tokens_per_month: 1500,
+    price: 9999, // cents ($99.99/month)
+    description: 'Unlimited power for large teams',
+    features: [
+      '1500 tokens/month',
+      'Unlimited token rollover',
+      'Dedicated support',
+      '30% bonus on token purchases',
+      'API access (coming soon)',
+    ],
     popular: false,
   },
 ];

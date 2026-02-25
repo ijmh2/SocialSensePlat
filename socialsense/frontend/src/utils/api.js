@@ -76,6 +76,12 @@ export const tokensApi = {
   verifySession: (sessionId) => api.get(`/tokens/verify-session/${sessionId}`, {
     timeout: 15000, // 15 second timeout for verification
   }),
+  // Subscription endpoints
+  getSubscriptionPlans: () => api.get('/tokens/subscriptions'),
+  getSubscription: () => api.get('/tokens/subscription'),
+  subscribe: (planId) => api.post('/tokens/subscribe', { plan_id: planId }),
+  cancelSubscription: () => api.post('/tokens/subscription/cancel'),
+  reactivateSubscription: () => api.post('/tokens/subscription/reactivate'),
 };
 
 // Analysis endpoints with extended timeouts
