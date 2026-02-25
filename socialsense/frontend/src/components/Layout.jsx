@@ -295,61 +295,6 @@ const Layout = ({ children }) => {
         </Box>
       )}
 
-      {/* User info */}
-      <Box sx={{ p: isCollapsed ? 1.5 : 2, borderTop: `1px solid ${colors.border}` }}>
-        {isCollapsed ? (
-          <Tooltip title={profile?.full_name || user?.email || 'User'} placement="right">
-            <Avatar
-              sx={{
-                width: 40,
-                height: 40,
-                mx: 'auto',
-                cursor: 'pointer',
-                background: gradients.primary,
-                fontSize: '1rem',
-              }}
-              onClick={handleMenuOpen}
-            >
-              {profile?.full_name?.[0] || user?.email?.[0]?.toUpperCase() || 'U'}
-            </Avatar>
-          </Tooltip>
-        ) : (
-          <Box
-            sx={{
-              p: 2,
-              borderRadius: '12px',
-              background: colors.surface,
-              border: `1px solid ${colors.border}`,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1.5,
-              cursor: 'pointer',
-              transition: 'all 200ms ease',
-              '&:hover': { boxShadow: shadows.card },
-            }}
-            onClick={handleMenuOpen}
-          >
-            <Avatar
-              sx={{
-                width: 40,
-                height: 40,
-                background: gradients.primary,
-                fontSize: '1rem',
-              }}
-            >
-              {profile?.full_name?.[0] || user?.email?.[0]?.toUpperCase() || 'U'}
-            </Avatar>
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography variant="body2" fontWeight={600} noWrap sx={{ color: colors.textPrimary }}>
-                {profile?.full_name || 'User'}
-              </Typography>
-              <Typography variant="caption" noWrap display="block" sx={{ color: colors.textMuted }}>
-                {user?.email}
-              </Typography>
-            </Box>
-          </Box>
-        )}
-      </Box>
     </Box>
   );
 
