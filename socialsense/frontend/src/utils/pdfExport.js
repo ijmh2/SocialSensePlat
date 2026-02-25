@@ -1,5 +1,5 @@
 /**
- * PDF Export utility for SocialSense analysis reports
+ * PDF Export utility for CommentIQ analysis reports
  * Uses browser's print functionality for PDF generation
  */
 
@@ -286,7 +286,7 @@ export const generateAnalysisPDF = (analysis) => {
 <body>
   <div class="header">
     <div>
-      <div class="logo">Social<span>Sense</span></div>
+      <div class="logo">Comment<span>IQ</span></div>
       <div style="color: #666; font-size: 12px; margin-top: 4px;">AI-Powered Comment Analysis</div>
     </div>
     <div class="date">Generated: ${formatDate(new Date().toISOString())}</div>
