@@ -89,13 +89,18 @@ function buildAnalysisPrompt(videoData, comments, platform) {
   const likeCount = parseInt(videoData.likeCount) || 0;
   const commentCount = parseInt(videoData.commentCount) || comments.length;
 
-  const engagementRate = viewCount > 0 ? ((likeCount + commentCount) / viewCount * 100).toFixed(2) : 0;
-  const likesToViews = viewCount > 0 ? (likeCount / viewCount * 100).toFixed(2) : 0;
-  const commentsToLikes = likeCount > 0 ? (commentCount / likeCount * 100).toFixed(2) : 0;
+  // Check if we have meaningful metrics (TikTok often doesn't provide these)
+  const hasMetrics = viewCount > 0 || likeCount > 0;
+  const isTikTok = platform === 'tiktok';
 
-  return `You are an expert social media engagement analyst. Analyze this ${platform.toUpperCase()} video's engagement authenticity and provide a detailed report.
+  const engagementRate = viewCount > 0 ? ((likeCount + commentCount) / viewCount * 100).toFixed(2) : null;
+  const likesToViews = viewCount > 0 ? (likeCount / viewCount * 100).toFixed(2) : null;
+  const commentsToLikes = likeCount > 0 ? (commentCount / likeCount * 100).toFixed(2) : null;
 
-## VIDEO DATA
+  // Build metrics section based on availability
+  let metricsSection = '';
+  if (hasMetrics) {
+    metricsSection = `## VIDEO DATA
 - Title: ${videoData.title || 'Unknown'}
 - Channel: ${videoData.channelTitle || 'Unknown'}
 - Views: ${viewCount.toLocaleString()}
@@ -103,12 +108,27 @@ function buildAnalysisPrompt(videoData, comments, platform) {
 - Comments: ${commentCount.toLocaleString()}
 
 ## CALCULATED METRICS
-- Engagement Rate: ${engagementRate}%
-- Likes-to-Views Ratio: ${likesToViews}%
-- Comments-to-Likes Ratio: ${commentsToLikes}%
+- Engagement Rate: ${engagementRate || 'N/A'}%
+- Likes-to-Views Ratio: ${likesToViews || 'N/A'}%
+- Comments-to-Likes Ratio: ${commentsToLikes || 'N/A'}%
 
 ## PLATFORM BENCHMARKS (${platform.toUpperCase()})
-- Engagement Rate: Excellent >${benchmarks.engagementRate.excellent}%, Good >${benchmarks.engagementRate.good}%, Average >${benchmarks.engagementRate.average}%, Suspicious Low <${benchmarks.engagementRate.suspiciousLow}%, Suspicious High >${benchmarks.engagementRate.suspiciousHigh}%
+- Engagement Rate: Excellent >${benchmarks.engagementRate.excellent}%, Good >${benchmarks.engagementRate.good}%, Average >${benchmarks.engagementRate.average}%`;
+  } else {
+    metricsSection = `## VIDEO DATA
+- Title: ${videoData.title || 'TikTok Video'}
+- Platform: ${platform.toUpperCase()}
+- Comments Analyzed: ${commentCount.toLocaleString()}
+
+## METRICS AVAILABILITY
+**NOTE: ${isTikTok ? 'TikTok' : 'This platform'} does not provide view/like counts through the API.**
+Your analysis should focus PRIMARILY on comment patterns and quality rather than engagement ratios.
+DO NOT flag missing metrics as red flags - this is a platform limitation, not a sign of fake engagement.`;
+  }
+
+  return `You are an expert social media engagement analyst. Analyze this ${platform.toUpperCase()} video's engagement authenticity and provide a detailed report.
+
+${metricsSection}
 
 ## COMMENT PATTERN ANALYSIS (${commentAnalysis.total} comments analyzed)
 - Emoji-Only Comments: ${commentAnalysis.emojiOnlyPct}%
@@ -120,12 +140,20 @@ ${commentAnalysis.samples.slice(0, 25).map((c, i) => `${i + 1}. "${c}"`).join('\
 
 ---
 
-Provide your analysis in this EXACT JSON format:
+${!hasMetrics ? `IMPORTANT: Since engagement metrics (views/likes) are not available for this ${platform.toUpperCase()} video, base your authenticity score PRIMARILY on comment quality and patterns. Focus on:
+- Are comments substantive and relevant to the content?
+- Do comments show genuine engagement (questions, detailed feedback)?
+- Are there signs of bot activity in comment patterns (duplicates, generic phrases)?
+- Is there diversity in commenter language and style?
+
+Do NOT penalize the score for missing metrics - this is normal for ${platform.toUpperCase()} API limitations.
+
+` : ''}Provide your analysis in this EXACT JSON format:
 {
   "authenticityScore": <number 0-100>,
   "verdict": "<Highly Authentic | Likely Authentic | Some Concerns | Significant Red Flags | High Fraud Risk>",
-  "engagementAssessment": "<2-3 sentence analysis>",
-  "ratioAnalysis": "<2-3 sentence analysis>",
+  "engagementAssessment": "<2-3 sentence analysis${!hasMetrics ? ' focusing on comment engagement patterns' : ''}>",
+  "ratioAnalysis": "${!hasMetrics ? 'Metrics not available for this platform - analysis based on comment patterns only.' : '<2-3 sentence analysis>'}",
   "commentQuality": "<2-3 sentence analysis>",
   "redFlags": [
     {"severity": "high|medium|low", "flag": "<issue>", "details": "<explanation>"}
