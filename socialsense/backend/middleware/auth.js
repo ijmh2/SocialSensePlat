@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '../config/supabase.js';
+import logger from '../utils/logger.js';
 
 /**
  * Middleware to verify JWT token from Supabase
@@ -17,7 +18,7 @@ export const authenticate = async (req, res, next) => {
     const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
 
     if (error || !user) {
-      console.error('[AUTH] Verification failed:', error?.message || 'No user found');
+      logger.debug('Auth verification failed', { reason: error?.message || 'No user found' });
       return res.status(401).json({ error: 'Invalid or expired token', code: 'AUTH_FAILED' });
     }
 
@@ -33,7 +34,7 @@ export const authenticate = async (req, res, next) => {
       .single();
 
     if (profileError) {
-      console.error('Profile fetch error:', profileError);
+      logger.debug('Profile fetch error', profileError);
       // Profile might not exist yet for new users
       req.profile = null;
     } else {
@@ -42,7 +43,7 @@ export const authenticate = async (req, res, next) => {
 
     next();
   } catch (error) {
-    console.error('Auth middleware error:', error);
+    logger.error('Auth middleware error', error);
     return res.status(500).json({ error: 'Authentication failed' });
   }
 };

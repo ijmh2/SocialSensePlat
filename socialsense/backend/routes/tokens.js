@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit';
 import stripe, { TOKEN_PACKAGES, TOKEN_COSTS, SUBSCRIPTION_PLANS } from '../config/stripe.js';
 import { supabaseAdmin } from '../config/supabase.js';
 import { authenticate } from '../middleware/auth.js';
+import logger from '../utils/logger.js';
 
 // Stricter rate limiting for checkout endpoint
 const checkoutLimiter = rateLimit({
@@ -81,7 +82,7 @@ router.post('/calculate', authenticate, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Calculate tokens error:', error);
+    logger.error('Calculate tokens error', error);
     res.status(500).json({ error: 'Failed to calculate token cost' });
   }
 });
@@ -158,7 +159,7 @@ router.post('/checkout', authenticate, checkoutLimiter, async (req, res) => {
     
     res.json({ url: session.url, session_id: session.id });
   } catch (error) {
-    console.error('Checkout error:', error);
+    logger.error('Checkout error', error);
     res.status(500).json({ error: 'Failed to create checkout session' });
   }
 });
@@ -171,18 +172,18 @@ router.get('/verify-session/:sessionId', authenticate, async (req, res) => {
   try {
     const { sessionId } = req.params;
     
-    console.log('Verifying session:', sessionId);
+    logger.debug('Verifying session', { sessionId });
     
     // Retrieve session from Stripe
     let session;
     try {
       session = await stripe.checkout.sessions.retrieve(sessionId);
     } catch (stripeError) {
-      console.error('Stripe retrieve error:', stripeError);
+      logger.error('Stripe retrieve error', stripeError);
       return res.status(400).json({ error: 'Invalid session ID' });
     }
     
-    console.log('Session status:', session.payment_status);
+    logger.debug('Session status', { status: session.payment_status });
     
     if (session.payment_status !== 'paid') {
       return res.status(400).json({ 
@@ -199,7 +200,7 @@ router.get('/verify-session/:sessionId', authenticate, async (req, res) => {
       .single();
     
     if (existingTransaction) {
-      console.log('Already processed, returning existing data');
+      logger.debug('Session already processed');
       return res.json({
         success: true,
         tokens_added: parseInt(session.metadata?.tokens || 0),
@@ -225,7 +226,7 @@ router.get('/verify-session/:sessionId', authenticate, async (req, res) => {
       });
       
       if (!error && data && data[0]?.success) {
-        console.log('Tokens added via RPC:', data[0]);
+        logger.info('Tokens added via RPC', { newBalance: data[0]?.new_balance });
         return res.json({
           success: true,
           tokens_added: tokensToAdd,
@@ -233,9 +234,9 @@ router.get('/verify-session/:sessionId', authenticate, async (req, res) => {
         });
       }
       
-      console.warn('RPC failed, falling back to manual update:', error);
+      logger.warn('RPC failed, using fallback', error);
     } catch (rpcError) {
-      console.warn('RPC not available, using fallback:', rpcError.message);
+      logger.warn('RPC not available, using fallback');
     }
     
     // Fallback: Manual token addition if RPC fails
@@ -249,7 +250,7 @@ router.get('/verify-session/:sessionId', authenticate, async (req, res) => {
       .single();
 
     if (existingTx) {
-      console.log('Transaction already exists (race condition avoided), returning existing');
+      logger.debug('Transaction already exists (race condition avoided)');
       return res.json({
         success: true,
         tokens_added: tokensToAdd,
@@ -285,7 +286,7 @@ router.get('/verify-session/:sessionId', authenticate, async (req, res) => {
     if (txError) {
       // If unique constraint violation, transaction was already processed
       if (txError.code === '23505') {
-        console.log('Transaction already recorded (concurrent request)');
+        logger.debug('Transaction already recorded (concurrent request)');
         const { data: existingProfile } = await supabaseAdmin
           .from('profiles')
           .select('token_balance')
@@ -298,7 +299,7 @@ router.get('/verify-session/:sessionId', authenticate, async (req, res) => {
           already_processed: true,
         });
       }
-      console.error('Transaction insert error:', txError);
+      logger.error('Transaction insert error', txError);
       return res.status(500).json({ error: 'Failed to record transaction' });
     }
 
@@ -316,7 +317,7 @@ router.get('/verify-session/:sessionId', authenticate, async (req, res) => {
 
     if (updateError || !updatedProfile) {
       // Profile was modified concurrently - get fresh balance
-      console.warn('Concurrent profile update detected, fetching fresh balance');
+      logger.warn('Concurrent profile update detected');
       const { data: freshProfile } = await supabaseAdmin
         .from('profiles')
         .select('token_balance')
@@ -331,7 +332,7 @@ router.get('/verify-session/:sessionId', authenticate, async (req, res) => {
       });
     }
 
-    console.log('Tokens added via fallback, new balance:', updatedProfile.token_balance);
+    logger.info('Tokens added via fallback', { newBalance: updatedProfile.token_balance });
 
     res.json({
       success: true,
@@ -339,7 +340,7 @@ router.get('/verify-session/:sessionId', authenticate, async (req, res) => {
       new_balance: updatedProfile.token_balance,
     });
   } catch (error) {
-    console.error('Verify session error:', error);
+    logger.error('Verify session error', error);
     res.status(500).json({ error: 'Failed to verify session' });
   }
 });
@@ -371,7 +372,7 @@ router.get('/subscription', authenticate, async (req, res) => {
       tokens_remaining: profile.subscription_tokens_remaining || 0,
     });
   } catch (error) {
-    console.error('Get subscription error:', error);
+    logger.error('Get subscription error', error);
     res.status(500).json({ error: 'Failed to get subscription status' });
   }
 });
@@ -473,7 +474,7 @@ router.post('/subscribe', authenticate, checkoutLimiter, async (req, res) => {
 
     res.json({ url: session.url, session_id: session.id });
   } catch (error) {
-    console.error('Subscription checkout error:', error);
+    logger.error('Subscription checkout error', error);
     res.status(500).json({ error: 'Failed to create subscription checkout' });
   }
 });
@@ -507,7 +508,7 @@ router.post('/subscription/cancel', authenticate, async (req, res) => {
 
     res.json({ success: true, message: 'Subscription will be canceled at the end of the billing period' });
   } catch (error) {
-    console.error('Cancel subscription error:', error);
+    logger.error('Cancel subscription error', error);
     res.status(500).json({ error: 'Failed to cancel subscription' });
   }
 });
@@ -541,7 +542,7 @@ router.post('/subscription/reactivate', authenticate, async (req, res) => {
 
     res.json({ success: true, message: 'Subscription reactivated' });
   } catch (error) {
-    console.error('Reactivate subscription error:', error);
+    logger.error('Reactivate subscription error', error);
     res.status(500).json({ error: 'Failed to reactivate subscription' });
   }
 });

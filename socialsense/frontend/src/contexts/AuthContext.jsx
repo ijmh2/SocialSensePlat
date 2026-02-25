@@ -4,6 +4,16 @@ import { authApi } from '../utils/api';
 
 const AuthContext = createContext({});
 
+// Validate redirect URLs to prevent open redirect attacks
+const getValidRedirectUrl = (path) => {
+  const baseUrl = import.meta.env.VITE_APP_URL || window.location.origin;
+  // Only allow paths, not full URLs (prevents redirects to external sites)
+  if (path.startsWith('/')) {
+    return `${baseUrl}${path}`;
+  }
+  return baseUrl;
+};
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -112,7 +122,7 @@ export const AuthProvider = ({ children }) => {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/dashboard`,
+        redirectTo: getValidRedirectUrl('/dashboard'),
       },
     });
 
@@ -127,7 +137,7 @@ export const AuthProvider = ({ children }) => {
 
   const resetPassword = async (email) => {
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: getValidRedirectUrl('/reset-password'),
     });
 
     if (error) throw error;

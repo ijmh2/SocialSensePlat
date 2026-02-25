@@ -80,9 +80,21 @@ app.use('/api/scheduled', scheduledRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('Error:', err);
+  // Log full error internally but don't expose to client
+  if (process.env.NODE_ENV === 'development') {
+    console.error('Error:', err);
+  } else {
+    // In production, log minimal info (no user data, no stack traces to stdout)
+    console.error(`[ERROR] ${err.status || 500} - ${req.method} ${req.path}`);
+  }
+
+  // Generic error messages for clients (never expose internal details)
+  const clientMessage = process.env.NODE_ENV === 'development'
+    ? err.message
+    : 'Something went wrong. Please try again.';
+
   res.status(err.status || 500).json({
-    error: err.message || 'Internal server error',
+    error: clientMessage,
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });
 });

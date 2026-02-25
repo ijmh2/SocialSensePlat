@@ -1,6 +1,7 @@
 import express from 'express';
 import stripe, { SUBSCRIPTION_PLANS } from '../config/stripe.js';
 import { supabaseAdmin } from '../config/supabase.js';
+import logger from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -14,13 +15,13 @@ router.post('/stripe', async (req, res) => {
 
   // Validate webhook secret is configured
   if (!webhookSecret) {
-    console.error('STRIPE_WEBHOOK_SECRET is not configured');
+    logger.error('STRIPE_WEBHOOK_SECRET is not configured');
     return res.status(500).json({ error: 'Webhook not configured' });
   }
 
   // Validate signature header exists
   if (!sig) {
-    console.error('Missing stripe-signature header');
+    logger.error('Missing stripe-signature header');
     return res.status(400).json({ error: 'Missing signature' });
   }
 
@@ -29,7 +30,7 @@ router.post('/stripe', async (req, res) => {
   try {
     event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
   } catch (err) {
-    console.error('Webhook signature verification failed:', err.message);
+    logger.error('Webhook signature verification failed', err);
     return res.status(400).json({ error: 'Webhook verification failed' });
   }
 
@@ -61,10 +62,10 @@ router.post('/stripe', async (req, res) => {
             });
 
             if (error) {
-              console.error('Failed to add tokens via webhook:', error);
+              logger.error('Failed to add tokens via webhook', error);
               return res.status(500).json({ error: 'Failed to add tokens' });
             }
-            console.log(`✅ Added ${tokens} tokens to user ${userId}`);
+            logger.info('Tokens added via webhook', { tokens, userId });
           }
         }
       }
@@ -93,7 +94,7 @@ router.post('/stripe', async (req, res) => {
             .eq('id', userId);
 
           if (updateError) {
-            console.error('Failed to update subscription:', updateError);
+            logger.error('Failed to update subscription', updateError);
             return res.status(500).json({ error: 'Failed to update subscription' });
           }
 
@@ -106,10 +107,10 @@ router.post('/stripe', async (req, res) => {
           });
 
           if (tokenError) {
-            console.error('Failed to add subscription tokens:', tokenError);
+            logger.error('Failed to add subscription tokens', tokenError);
           }
 
-          console.log(`✅ Subscription activated for user ${userId}: ${planId} (${tokensPerMonth} tokens)`);
+          logger.info('Subscription activated', { userId, planId, tokensPerMonth });
         }
       }
       break;
@@ -155,11 +156,11 @@ router.post('/stripe', async (req, res) => {
             });
 
             if (tokenError) {
-              console.error('Failed to add renewal tokens:', tokenError);
+              logger.error('Failed to add renewal tokens', tokenError);
               return res.status(500).json({ error: 'Failed to add renewal tokens' });
             }
 
-            console.log(`✅ Subscription renewed for user ${userId}: +${tokensPerMonth} tokens (unlimited rollover)`);
+            logger.info('Subscription renewed', { userId, tokensPerMonth });
           }
         }
       }
@@ -182,7 +183,7 @@ router.post('/stripe', async (req, res) => {
           })
           .eq('id', userId);
 
-        console.log(`✅ Subscription ended for user ${userId}`);
+        logger.info('Subscription ended', { userId });
       }
       break;
     }
@@ -204,14 +205,14 @@ router.post('/stripe', async (req, res) => {
           })
           .eq('id', userId);
 
-        console.log(`✅ Subscription updated for user ${userId}: ${status}`);
+        logger.info('Subscription updated', { userId, status });
       }
       break;
     }
 
     case 'payment_intent.payment_failed': {
       const paymentIntent = event.data.object;
-      console.log('Payment failed:', paymentIntent.id);
+      logger.warn('Payment failed', { paymentIntentId: paymentIntent.id });
       break;
     }
 
@@ -229,14 +230,14 @@ router.post('/stripe', async (req, res) => {
             .update({ subscription_status: 'past_due' })
             .eq('id', userId);
 
-          console.log(`⚠️ Subscription payment failed for user ${userId}`);
+          logger.warn('Subscription payment failed', { userId });
         }
       }
       break;
     }
 
     default:
-      console.log(`Unhandled event type: ${event.type}`);
+      logger.debug('Unhandled webhook event', { type: event.type });
   }
 
   res.json({ received: true });

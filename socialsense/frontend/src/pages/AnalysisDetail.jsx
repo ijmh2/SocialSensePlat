@@ -306,16 +306,17 @@ const AnalysisDetail = () => {
   return (
     <Box>
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'stretch', md: 'center' }, gap: 2, mb: 4 }}>
         <Button
           startIcon={<ArrowBack />}
           onClick={() => navigate('/history')}
           variant="outlined"
+          sx={{ alignSelf: { xs: 'flex-start', md: 'center' } }}
         >
           Back
         </Button>
         <Box sx={{ flex: 1 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
             {getPlatformIcon(analysis.platform)}
             <Typography variant="h5" fontWeight={700}>
               {analysis.video_title || 'Analysis Results'}
@@ -376,11 +377,12 @@ const AnalysisDetail = () => {
           </Typography>
         </Box>
         {analysis.status === 'completed' && (
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: { xs: 'flex-start', sm: 'flex-end' } }}>
             <Button
               variant="outlined"
               startIcon={<CompareArrows />}
               onClick={() => navigate(`/compare?a=${id}`)}
+              size="small"
               sx={{
                 borderColor: theme.palette.primary.main,
                 color: theme.palette.primary.main,
@@ -396,6 +398,7 @@ const AnalysisDetail = () => {
               variant="contained"
               startIcon={<PictureAsPdf />}
               onClick={handlePdfExport}
+              size="small"
               sx={{
                 background: 'linear-gradient(135deg, #DC2626 0%, #EF4444 100%)',
                 '&:hover': {
@@ -403,15 +406,16 @@ const AnalysisDetail = () => {
                 },
               }}
             >
-              Export PDF
+              PDF
             </Button>
             {analysis.raw_comments?.length > 0 && (
               <Button
                 variant="outlined"
                 startIcon={<Download />}
                 onClick={handleExport}
+                size="small"
               >
-                Export CSV
+                CSV
               </Button>
             )}
           </Box>
