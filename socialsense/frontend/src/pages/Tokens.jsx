@@ -477,7 +477,7 @@ const Tokens = () => {
                         </Typography>
                         <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', mb: 1 }}>
                           <Typography variant="h4" fontWeight={700} className="gradient-text font-mono">
-                            ${(plan.price / 100).toFixed(0)}
+                            ${(plan.price / 100).toFixed(2)}
                           </Typography>
                           <Typography variant="body2" sx={{ color: colors.textMuted, ml: 0.5 }}>/mo</Typography>
                         </Box>
