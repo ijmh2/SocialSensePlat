@@ -65,28 +65,28 @@ const FALLBACK_SUBSCRIPTION_PLANS = [
   {
     id: 'sub_starter',
     name: 'Starter',
-    tokens_per_month: 150,
-    price: 1499,
+    tokens_per_month: 250,
+    price: 999,
     description: 'Perfect for content creators',
-    features: ['150 tokens/month', 'Rollover unused tokens (max 300)', 'Priority support'],
+    features: ['250 tokens/month', 'Unlimited rollover', 'Priority support'],
     popular: false,
   },
   {
     id: 'sub_pro',
     name: 'Pro',
-    tokens_per_month: 500,
-    price: 3999,
+    tokens_per_month: 1000,
+    price: 2499,
     description: 'For agencies and power users',
-    features: ['500 tokens/month', 'Rollover unused tokens (max 1000)', 'Priority support', '20% bonus on token purchases'],
+    features: ['1000 tokens/month', 'Unlimited rollover', 'Priority support', '20% bonus on additional purchases'],
     popular: true,
   },
   {
     id: 'sub_enterprise',
     name: 'Enterprise',
-    tokens_per_month: 1500,
-    price: 9999,
+    tokens_per_month: 3000,
+    price: 6999,
     description: 'Unlimited power for large teams',
-    features: ['1500 tokens/month', 'Unlimited token rollover', 'Dedicated support', '30% bonus on token purchases', 'API access (coming soon)'],
+    features: ['3000 tokens/month', 'Unlimited rollover', 'Dedicated support', '30% bonus on additional purchases', 'API access (coming soon)'],
     popular: false,
   },
 ];
@@ -632,9 +632,9 @@ const Tokens = () => {
                       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
                         <Schedule sx={{ color: colors.primary, mt: 0.5 }} />
                         <Box>
-                          <Typography variant="body2" fontWeight={600} sx={{ color: colors.textPrimary }}>Save up to 30%</Typography>
+                          <Typography variant="body2" fontWeight={600} sx={{ color: colors.textPrimary }}>Save 20-33%</Typography>
                           <Typography variant="caption" sx={{ color: colors.textSecondary }}>
-                            Monthly tokens are more cost-effective than one-time purchases
+                            Subscriptions are cheaper per token than one-time purchases
                           </Typography>
                         </Box>
                       </Box>
@@ -643,9 +643,9 @@ const Tokens = () => {
                       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
                         <Autorenew sx={{ color: colors.primary, mt: 0.5 }} />
                         <Box>
-                          <Typography variant="body2" fontWeight={600} sx={{ color: colors.textPrimary }}>Rollover Tokens</Typography>
+                          <Typography variant="body2" fontWeight={600} sx={{ color: colors.textPrimary }}>Unlimited Rollover</Typography>
                           <Typography variant="caption" sx={{ color: colors.textSecondary }}>
-                            Unused tokens roll over to next month (limits apply per plan)
+                            Unused tokens roll over forever - never lose what you paid for
                           </Typography>
                         </Box>
                       </Box>

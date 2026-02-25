@@ -41,16 +41,17 @@ export const TOKEN_PACKAGES = [
 ];
 
 // Subscription plans (monthly recurring)
+// Priced to be ~25-30% cheaper than buying tokens one-time
 export const SUBSCRIPTION_PLANS = [
   {
     id: 'sub_starter',
     name: 'Starter',
-    tokens_per_month: 150,
-    price: 1499, // cents ($14.99/month)
+    tokens_per_month: 250,
+    price: 999, // cents ($9.99/month) - normally ~$12.50 one-time = 20% savings
     description: 'Perfect for content creators',
     features: [
-      '150 tokens/month',
-      'Rollover unused tokens (max 300)',
+      '250 tokens/month',
+      'Unlimited rollover',
       'Priority support',
     ],
     popular: false,
@@ -58,28 +59,28 @@ export const SUBSCRIPTION_PLANS = [
   {
     id: 'sub_pro',
     name: 'Pro',
-    tokens_per_month: 500,
-    price: 3999, // cents ($39.99/month)
+    tokens_per_month: 1000,
+    price: 2499, // cents ($24.99/month) - normally $35 one-time = 29% savings
     description: 'For agencies and power users',
     features: [
-      '500 tokens/month',
-      'Rollover unused tokens (max 1000)',
+      '1000 tokens/month',
+      'Unlimited rollover',
       'Priority support',
-      '20% bonus on token purchases',
+      '20% bonus on additional purchases',
     ],
     popular: true,
   },
   {
     id: 'sub_enterprise',
     name: 'Enterprise',
-    tokens_per_month: 1500,
-    price: 9999, // cents ($99.99/month)
+    tokens_per_month: 3000,
+    price: 6999, // cents ($69.99/month) - normally ~$105 one-time = 33% savings
     description: 'Unlimited power for large teams',
     features: [
-      '1500 tokens/month',
-      'Unlimited token rollover',
+      '3000 tokens/month',
+      'Unlimited rollover',
       'Dedicated support',
-      '30% bonus on token purchases',
+      '30% bonus on additional purchases',
       'API access (coming soon)',
     ],
     popular: false,

@@ -138,32 +138,15 @@ router.post('/stripe', async (req, res) => {
             .single();
 
           if (!existingTransaction) {
-            // Get current profile to check rollover
-            const { data: profile } = await supabaseAdmin
-              .from('profiles')
-              .select('token_balance, subscription_tokens_remaining')
-              .eq('id', userId)
-              .single();
-
-            // Calculate rollover (plan-specific limits)
-            const plan = SUBSCRIPTION_PLANS.find(p => p.id === planId);
-            let rolloverLimit = tokensPerMonth * 2; // Default: 2x monthly tokens
-            if (planId === 'sub_enterprise') rolloverLimit = Infinity;
-
-            const currentRemaining = profile?.subscription_tokens_remaining || 0;
-            const rollover = Math.min(currentRemaining, rolloverLimit - tokensPerMonth);
-            const newTokens = tokensPerMonth + Math.max(0, rollover);
-
-            // Update subscription period and add tokens
+            // Unlimited rollover - just update period end
             await supabaseAdmin
               .from('profiles')
               .update({
                 subscription_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-                subscription_tokens_remaining: newTokens,
               })
               .eq('id', userId);
 
-            // Add tokens
+            // Add monthly tokens (they stack with existing balance - unlimited rollover)
             const { error: tokenError } = await supabaseAdmin.rpc('add_tokens', {
               p_user_id: userId,
               p_amount: tokensPerMonth,
@@ -176,7 +159,7 @@ router.post('/stripe', async (req, res) => {
               return res.status(500).json({ error: 'Failed to add renewal tokens' });
             }
 
-            console.log(`✅ Subscription renewed for user ${userId}: +${tokensPerMonth} tokens (rollover: ${rollover})`);
+            console.log(`✅ Subscription renewed for user ${userId}: +${tokensPerMonth} tokens (unlimited rollover)`);
           }
         }
       }
