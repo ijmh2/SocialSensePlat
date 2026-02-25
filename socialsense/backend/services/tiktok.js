@@ -49,6 +49,115 @@ export async function extractTikTokVideoId(url) {
 }
 
 /**
+ * Get TikTok video details (views, likes, shares, etc.) by scraping the page
+ * @returns {Promise<{viewCount, likeCount, commentCount, shareCount, title, channelTitle}>}
+ */
+export async function getTikTokVideoDetails(videoId) {
+  try {
+    // Try the detail API endpoint first
+    const apiUrl = `https://www.tiktok.com/api/item/detail/?aid=1988&itemId=${videoId}`;
+
+    const response = await axios.get(apiUrl, {
+      headers: {
+        'User-Agent': getRandomUA(),
+        'Accept': 'application/json',
+        'Referer': `https://www.tiktok.com/@user/video/${videoId}`,
+      },
+      timeout: 15000,
+    });
+
+    const itemInfo = response.data?.itemInfo?.itemStruct;
+    if (itemInfo) {
+      const stats = itemInfo.stats || {};
+      return {
+        id: videoId,
+        title: itemInfo.desc || 'TikTok Video',
+        channelTitle: itemInfo.author?.nickname || itemInfo.author?.uniqueId || 'Unknown',
+        viewCount: stats.playCount || 0,
+        likeCount: stats.diggCount || 0,
+        commentCount: stats.commentCount || 0,
+        shareCount: stats.shareCount || 0,
+        hasMetrics: (stats.playCount || 0) > 0,
+      };
+    }
+  } catch (error) {
+    console.warn('[TikTok] Detail API failed:', error.message);
+  }
+
+  // Fallback: Try scraping the video page HTML for embedded JSON
+  try {
+    const pageUrl = `https://www.tiktok.com/@user/video/${videoId}`;
+    const response = await axios.get(pageUrl, {
+      headers: {
+        'User-Agent': getRandomUA(),
+        'Accept': 'text/html,application/xhtml+xml',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+      timeout: 15000,
+    });
+
+    const html = response.data;
+
+    // Look for __UNIVERSAL_DATA_FOR_REHYDRATION__ JSON
+    const jsonMatch = html.match(/<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__"[^>]*>([^<]+)<\/script>/);
+    if (jsonMatch) {
+      const data = JSON.parse(jsonMatch[1]);
+      const itemModule = data?.['__DEFAULT_SCOPE__']?.['webapp.video-detail']?.itemInfo?.itemStruct;
+
+      if (itemModule) {
+        const stats = itemModule.stats || {};
+        return {
+          id: videoId,
+          title: itemModule.desc || 'TikTok Video',
+          channelTitle: itemModule.author?.nickname || itemModule.author?.uniqueId || 'Unknown',
+          viewCount: stats.playCount || 0,
+          likeCount: stats.diggCount || 0,
+          commentCount: stats.commentCount || 0,
+          shareCount: stats.shareCount || 0,
+          hasMetrics: (stats.playCount || 0) > 0,
+        };
+      }
+    }
+
+    // Try SIGI_STATE format (older TikTok pages)
+    const sigiMatch = html.match(/<script id="SIGI_STATE"[^>]*>([^<]+)<\/script>/);
+    if (sigiMatch) {
+      const data = JSON.parse(sigiMatch[1]);
+      const itemModule = data?.ItemModule?.[videoId];
+
+      if (itemModule) {
+        const stats = itemModule.stats || {};
+        return {
+          id: videoId,
+          title: itemModule.desc || 'TikTok Video',
+          channelTitle: itemModule.author || 'Unknown',
+          viewCount: stats.playCount || 0,
+          likeCount: stats.diggCount || 0,
+          commentCount: stats.commentCount || 0,
+          shareCount: stats.shareCount || 0,
+          hasMetrics: (stats.playCount || 0) > 0,
+        };
+      }
+    }
+  } catch (error) {
+    console.warn('[TikTok] Page scraping failed:', error.message);
+  }
+
+  // Return empty metrics if all methods fail
+  console.log('[TikTok] Could not fetch video metrics, using comment-only analysis');
+  return {
+    id: videoId,
+    title: 'TikTok Video',
+    channelTitle: 'Unknown',
+    viewCount: 0,
+    likeCount: 0,
+    commentCount: 0,
+    shareCount: 0,
+    hasMetrics: false,
+  };
+}
+
+/**
  * Get estimated comment count for a TikTok video
  * @returns {Promise<{count: number, estimated: boolean}>}
  */
@@ -203,6 +312,7 @@ export async function scrapeTikTokComments(videoId, maxComments = 500, onProgres
 
 export default {
   extractTikTokVideoId,
+  getTikTokVideoDetails,
   getTikTokCommentCount,
   scrapeTikTokComments,
 };

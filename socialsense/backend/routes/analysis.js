@@ -25,7 +25,7 @@ const uploadRateLimiter = rateLimit({
 });
 
 import { extractVideoId, getVideoDetails, scrapeYouTubeComments } from '../services/youtube.js';
-import { extractTikTokVideoId, getTikTokCommentCount, scrapeTikTokComments } from '../services/tiktok.js';
+import { extractTikTokVideoId, getTikTokVideoDetails, getTikTokCommentCount, scrapeTikTokComments } from '../services/tiktok.js';
 import { processComments, extractThemesAndKeywords } from '../services/commentProcessor.js';
 import { analyzeComments, transcribeAudio } from '../services/openai.js';
 import { aggregateSentiment } from '../services/sentiment.js';
@@ -142,14 +142,27 @@ router.post('/estimate', authenticate, async (req, res) => {
     } else if (platform === 'tiktok') {
       try {
         const videoId = await extractTikTokVideoId(url);
-        const countResult = await getTikTokCommentCount(videoId);
-        commentCount = countResult.count;
+        // Try to get full video details (views, likes, etc.)
+        const details = await getTikTokVideoDetails(videoId);
+        commentCount = details.commentCount || 0;
+
+        // If we didn't get metrics from the page, fall back to comment count API
+        if (commentCount === 0) {
+          const countResult = await getTikTokCommentCount(videoId);
+          commentCount = countResult.count;
+        }
+
         videoDetails = {
           id: videoId,
-          title: 'TikTok Video',
+          title: details.title || 'TikTok Video',
+          channelTitle: details.channelTitle || 'Unknown',
+          viewCount: details.viewCount || 0,
+          likeCount: details.likeCount || 0,
           commentCount,
-          commentCountEstimated: countResult.estimated
+          shareCount: details.shareCount || 0,
+          hasMetrics: details.hasMetrics || false,
         };
+        console.log(`[TikTok] Video details: views=${details.viewCount}, likes=${details.likeCount}, hasMetrics=${details.hasMetrics}`);
       } catch (ttError) {
         clearTimeout(timeout);
         console.error('TikTok error:', ttError);
@@ -379,13 +392,27 @@ router.post('/comments', authenticate, uploadFields, uploadRateLimiter, async (r
     } else if (platform === 'tiktok') {
       try {
         videoId = await extractTikTokVideoId(url);
-        const countResult = await getTikTokCommentCount(videoId);
+        // Try to get full video details (views, likes, etc.)
+        const details = await getTikTokVideoDetails(videoId);
+        let commentCount = details.commentCount || 0;
+
+        // If we didn't get metrics from the page, fall back to comment count API
+        if (commentCount === 0) {
+          const countResult = await getTikTokCommentCount(videoId);
+          commentCount = countResult.count;
+        }
+
         videoDetails = {
           id: videoId,
-          title: 'TikTok Video',
-          commentCount: countResult.count,
-          commentCountEstimated: countResult.estimated
+          title: details.title || 'TikTok Video',
+          channelTitle: details.channelTitle || 'Unknown',
+          viewCount: details.viewCount || 0,
+          likeCount: details.likeCount || 0,
+          commentCount,
+          shareCount: details.shareCount || 0,
+          hasMetrics: details.hasMetrics || false,
         };
+        console.log(`[TikTok] Video details for analysis: views=${details.viewCount}, likes=${details.likeCount}, hasMetrics=${details.hasMetrics}`);
       } catch (e) {
         return res.status(400).json({ error: e.message || 'Failed to fetch TikTok video' });
       }
