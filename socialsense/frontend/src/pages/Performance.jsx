@@ -310,7 +310,7 @@ const Performance = () => {
                       justifyContent: 'center',
                     }}
                   >
-                    <Typography variant="h5" fontWeight={700} sx={{ color: theme.palette.success.main }}>
+                    <Typography variant="h5" fontWeight={700} sx={{ color: theme.palette.success.main, whiteSpace: 'nowrap' }}>
                       {data.bestVideo?.score}
                     </Typography>
                   </Box>
@@ -363,7 +363,7 @@ const Performance = () => {
                       justifyContent: 'center',
                     }}
                   >
-                    <Typography variant="h5" fontWeight={700} sx={{ color: theme.palette.warning.main }}>
+                    <Typography variant="h5" fontWeight={700} sx={{ color: theme.palette.warning.main, whiteSpace: 'nowrap' }}>
                       {data.worstVideo?.score}
                     </Typography>
                   </Box>
