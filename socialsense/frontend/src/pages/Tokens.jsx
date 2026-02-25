@@ -350,13 +350,13 @@ const Tokens = () => {
           {/* SUBSCRIPTIONS SECTION - BEST VALUE */}
           {/* ============================================ */}
           <Box sx={{ mb: 4 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3, flexWrap: 'wrap' }}>
               <Typography variant="h5" fontWeight={700} sx={{ color: colors.textPrimary }}>
-                Monthly Subscriptions
+                Subscriptions
               </Typography>
               <Chip
                 icon={<Savings sx={{ fontSize: 16 }} />}
-                label="Best Value - Save 20-33%"
+                label="Save 20-33%"
                 size="small"
                 sx={{
                   background: gradients.primary,
@@ -471,18 +471,18 @@ const Tokens = () => {
                           }}
                         />
                       )}
-                      <Box sx={{ p: 4, textAlign: 'center' }}>
-                        <Typography variant="h5" fontWeight={700} sx={{ mb: 1, color: colors.textPrimary }}>
+                      <Box sx={{ p: { xs: 2.5, sm: 4 }, textAlign: 'center' }}>
+                        <Typography variant="h6" fontWeight={700} sx={{ mb: 1, color: colors.textPrimary }}>
                           {plan.name}
                         </Typography>
                         <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', mb: 1 }}>
-                          <Typography variant="h3" fontWeight={700} className="gradient-text font-mono">
-                            ${(plan.price / 100).toFixed(2)}
+                          <Typography variant="h4" fontWeight={700} className="gradient-text font-mono">
+                            ${(plan.price / 100).toFixed(0)}
                           </Typography>
-                          <Typography variant="body2" sx={{ color: colors.textMuted, ml: 0.5 }}>/month</Typography>
+                          <Typography variant="body2" sx={{ color: colors.textMuted, ml: 0.5 }}>/mo</Typography>
                         </Box>
                         <Chip
-                          label={`${plan.tokens_per_month} tokens/month`}
+                          label={`${plan.tokens_per_month}/mo`}
                           size="small"
                           sx={{
                             mb: 2,
@@ -491,7 +491,7 @@ const Tokens = () => {
                             fontWeight: 600,
                           }}
                         />
-                        <Typography variant="body2" sx={{ color: colors.textSecondary, mb: 3 }}>
+                        <Typography variant="body2" sx={{ color: colors.textSecondary, mb: 2 }}>
                           {plan.description}
                         </Typography>
 

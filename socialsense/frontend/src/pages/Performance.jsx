@@ -295,13 +295,14 @@ const Performance = () => {
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                   <EmojiEvents sx={{ color: '#FFD700' }} />
-                  <Typography variant="h6" fontWeight={600}>Best Performing Video</Typography>
+                  <Typography variant="h6" fontWeight={600}>Best Performing</Typography>
                 </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
                   <Box
                     sx={{
-                      width: 60,
-                      height: 60,
+                      width: 56,
+                      height: 56,
+                      flexShrink: 0,
                       borderRadius: '12px',
                       background: alpha(theme.palette.success.main, 0.15),
                       display: 'flex',
@@ -309,22 +310,22 @@ const Performance = () => {
                       justifyContent: 'center',
                     }}
                   >
-                    <Typography variant="h4" fontWeight={700} sx={{ color: theme.palette.success.main }}>
+                    <Typography variant="h5" fontWeight={700} sx={{ color: theme.palette.success.main }}>
                       {data.bestVideo?.score}
                     </Typography>
                   </Box>
-                  <Box sx={{ flex: 1 }}>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       {getPlatformIcon(data.bestVideo?.platform)}
-                      <Typography variant="body1" fontWeight={600} noWrap>
+                      <Typography variant="body2" fontWeight={600} noWrap>
                         {data.bestVideo?.title}
                       </Typography>
                     </Box>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="caption" color="text.secondary">
                       {formatDate(data.bestVideo?.date)}
                     </Typography>
                   </Box>
-                  <ArrowForward sx={{ color: 'text.secondary' }} />
+                  <ArrowForward sx={{ color: 'text.secondary', flexShrink: 0 }} />
                 </Box>
               </CardContent>
             </Card>
@@ -347,13 +348,14 @@ const Performance = () => {
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                   <Warning sx={{ color: theme.palette.warning.main }} />
-                  <Typography variant="h6" fontWeight={600}>Needs Most Improvement</Typography>
+                  <Typography variant="h6" fontWeight={600}>Needs Improvement</Typography>
                 </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
                   <Box
                     sx={{
-                      width: 60,
-                      height: 60,
+                      width: 56,
+                      height: 56,
+                      flexShrink: 0,
                       borderRadius: '12px',
                       background: alpha(theme.palette.warning.main, 0.15),
                       display: 'flex',
@@ -361,22 +363,22 @@ const Performance = () => {
                       justifyContent: 'center',
                     }}
                   >
-                    <Typography variant="h4" fontWeight={700} sx={{ color: theme.palette.warning.main }}>
+                    <Typography variant="h5" fontWeight={700} sx={{ color: theme.palette.warning.main }}>
                       {data.worstVideo?.score}
                     </Typography>
                   </Box>
-                  <Box sx={{ flex: 1 }}>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       {getPlatformIcon(data.worstVideo?.platform)}
-                      <Typography variant="body1" fontWeight={600} noWrap>
+                      <Typography variant="body2" fontWeight={600} noWrap>
                         {data.worstVideo?.title}
                       </Typography>
                     </Box>
-                    <Typography variant="body2" color="text.secondary" noWrap>
-                      {data.worstVideo?.improvement || 'View for improvement tips'}
+                    <Typography variant="caption" color="text.secondary" noWrap>
+                      {data.worstVideo?.improvement || 'View for tips'}
                     </Typography>
                   </Box>
-                  <ArrowForward sx={{ color: 'text.secondary' }} />
+                  <ArrowForward sx={{ color: 'text.secondary', flexShrink: 0 }} />
                 </Box>
               </CardContent>
             </Card>
