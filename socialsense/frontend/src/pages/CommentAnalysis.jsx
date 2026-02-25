@@ -321,7 +321,7 @@ const CommentAnalysis = () => {
               Select Platform & Enter URL
             </Typography>
 
-            <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 3 }}>
               {/* YouTube Card */}
               <Card
                 onClick={() => setPlatform('youtube')}
@@ -574,7 +574,7 @@ const CommentAnalysis = () => {
               Whose video is this?
             </Typography>
 
-            <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 3 }}>
               {/* My Video Option */}
               <Card
                 onClick={() => { setIsMyVideo(true); setIsCompetitor(false); }}

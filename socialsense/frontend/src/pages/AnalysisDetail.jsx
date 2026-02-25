@@ -426,7 +426,9 @@ const AnalysisDetail = () => {
       {analysis.status === 'processing' && (
         <Alert severity="info" sx={{ mb: 4 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <CircularProgress size={20} />
+            <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+              <CircularProgress size={20} />
+            </Box>
             <Typography>
               Analysis in progress... This may take a few minutes.
               The page will update automatically when results are ready.
