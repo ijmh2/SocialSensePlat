@@ -387,6 +387,94 @@ body {
   }
 }
 
+/* ================================
+   MOBILE OVERFLOW FIXES
+   ================================ */
+
+/* Prevent horizontal scroll on entire page */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+#root {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Mobile-specific fixes */
+@media (max-width: 600px) {
+  /* Ensure tables scroll horizontally */
+  .MuiTableContainer-root {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Prevent long text from breaking layout */
+  .MuiTypography-root {
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  /* Make cards respect container width */
+  .MuiCard-root {
+    max-width: 100% !important;
+    overflow: hidden;
+  }
+
+  /* Fix MUI Grid negative margins causing overflow */
+  .MuiGrid-container {
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    width: 100% !important;
+  }
+
+  .MuiGrid-item {
+    max-width: 100% !important;
+  }
+
+  /* Fix chip overflow */
+  .MuiChip-root {
+    max-width: 100%;
+  }
+
+  .MuiChip-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Fix button groups on mobile */
+  .MuiToggleButtonGroup-root {
+    flex-wrap: wrap;
+  }
+
+  /* Ensure Box components don't overflow */
+  .MuiBox-root {
+    max-width: 100%;
+  }
+
+  /* Fix tabs scrolling */
+  .MuiTabs-root {
+    max-width: 100%;
+  }
+
+  .MuiTabs-scroller {
+    overflow-x: auto !important;
+  }
+
+  /* Smaller padding on mobile */
+  .MuiCardContent-root {
+    padding: 16px !important;
+  }
+
+  /* Fix recharts responsiveness */
+  .recharts-wrapper {
+    max-width: 100% !important;
+  }
+}
+
 /* Toast Styles */
 .Toastify__toast {
   background: var(--color-background) !important;
