@@ -1,8 +1,18 @@
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import { supabaseAdmin } from '../config/supabase.js';
 import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
+
+// Rate limiter for referral code checks - prevents brute-force enumeration
+const referralCheckLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // Max 10 checks per 15 minutes per IP
+  message: { error: 'Too many referral checks. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 /**
  * GET /api/auth/profile
@@ -279,7 +289,7 @@ router.post('/apply-referral', authenticate, async (req, res) => {
  * Check if a referral code is valid (public endpoint for signup form)
  * Security: Uses timing-safe response to prevent user enumeration
  */
-router.get('/check-referral/:code', async (req, res) => {
+router.get('/check-referral/:code', referralCheckLimiter, async (req, res) => {
   const startTime = Date.now();
   const MIN_RESPONSE_TIME = 100; // Minimum 100ms response to prevent timing attacks
 

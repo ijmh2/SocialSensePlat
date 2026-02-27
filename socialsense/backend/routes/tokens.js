@@ -210,8 +210,19 @@ router.get('/verify-session/:sessionId', authenticate, async (req, res) => {
     }
     
     const tokensToAdd = parseInt(session.metadata?.tokens || 0);
-    const userId = session.metadata?.user_id || req.user.id;
-    
+
+    // SECURITY: Always use authenticated user ID, not metadata
+    // Validate that the session belongs to the authenticated user
+    if (session.metadata?.user_id && session.metadata.user_id !== req.user.id) {
+      logger.warn('Session ownership mismatch', {
+        sessionOwner: session.metadata.user_id,
+        authenticatedUser: req.user.id,
+      });
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    const userId = req.user.id;
+
     if (!tokensToAdd) {
       return res.status(400).json({ error: 'Invalid token amount in session' });
     }

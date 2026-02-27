@@ -38,7 +38,18 @@ const TokenSuccess = () => {
   const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
-    const sessionId = searchParams.get('session_id');
+    // Get session ID from URL or sessionStorage (for security, we store and clear from URL)
+    let sessionId = searchParams.get('session_id');
+
+    // If session ID is in URL, store it and clear from URL to prevent exposure in browser history
+    if (sessionId) {
+      sessionStorage.setItem('stripe_session_id', sessionId);
+      // Clear the session_id from URL without triggering a reload
+      window.history.replaceState({}, '', window.location.pathname);
+    } else {
+      // Try to get from sessionStorage if not in URL (e.g., page refresh)
+      sessionId = sessionStorage.getItem('stripe_session_id');
+    }
 
     // Safety timeout for the entire verification process
     const safetyTimeout = setTimeout(() => {
@@ -53,6 +64,8 @@ const TokenSuccess = () => {
       hasVerified.current = true;
       verifySession(sessionId).finally(() => {
         clearTimeout(safetyTimeout);
+        // Clear sessionStorage after successful verification
+        sessionStorage.removeItem('stripe_session_id');
       });
     } else if (!sessionId) {
       clearTimeout(safetyTimeout);
@@ -105,10 +118,13 @@ const TokenSuccess = () => {
   };
 
   const handleRetry = () => {
-    const sessionId = searchParams.get('session_id');
+    // Get session ID from sessionStorage (URL is already cleared)
+    const sessionId = sessionStorage.getItem('stripe_session_id');
     if (sessionId) {
       hasVerified.current = false;
       verifySession(sessionId);
+    } else {
+      setError('Session expired. Please try purchasing tokens again.');
     }
   };
 
