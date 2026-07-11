@@ -100,7 +100,15 @@ const AnalysisDetail = () => {
   useEffect(() => {
     if (analysis?.status !== 'processing') return;
 
+    const pollStart = Date.now();
+    const POLL_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+
     const interval = setInterval(() => {
+      if (Date.now() - pollStart > POLL_TIMEOUT_MS) {
+        clearInterval(interval);
+        setError('Analysis is taking longer than expected. Refresh the page to check again.');
+        return;
+      }
       loadAnalysis(true); // silent update
     }, 5000);
 
@@ -238,7 +246,17 @@ const AnalysisDetail = () => {
   }
 
   if (!analysis) {
-    return null;
+    return (
+      <Box sx={{ textAlign: 'center', py: 10 }}>
+        <Typography variant="h6" sx={{ mb: 1 }}>Analysis not found</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          This analysis may have been deleted or you may not have access to it.
+        </Typography>
+        <Button variant="outlined" onClick={() => navigate('/history')}>
+          Back to History
+        </Button>
+      </Box>
+    );
   }
 
   let keywords = [];
@@ -769,9 +787,14 @@ const AnalysisDetail = () => {
                   <ReactMarkdown skipHtml>{analysis.summary}</ReactMarkdown>
                 </Box>
               ) : (
-                <Typography color="text.secondary" textAlign="center" py={4}>
-                  No AI analysis available for this report.
-                </Typography>
+                <Box sx={{ textAlign: 'center', py: 4 }}>
+                  <Typography variant="body1" fontWeight={600} sx={{ mb: 1 }}>
+                    AI analysis coming soon
+                  </Typography>
+                  <Typography color="text.secondary" variant="body2">
+                    GPT-powered summaries and marketing insights are not yet enabled. Your sentiment scores, keywords, and themes are available in the tabs above.
+                  </Typography>
+                </Box>
               )}
             </CardContent>
           </Card>

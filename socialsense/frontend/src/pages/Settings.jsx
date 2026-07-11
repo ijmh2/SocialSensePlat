@@ -399,9 +399,9 @@ const Settings = () => {
               />
             </Box>
 
-            <Button variant="outlined" disabled>
-              Save Preferences (Coming Soon)
-            </Button>
+            <Typography variant="caption" sx={{ color: colors.textMuted, display: 'block', mt: 1 }}>
+              Notification preferences will be saved when this feature launches.
+            </Typography>
           </TabPanel>
 
           {/* Account Tab */}
@@ -439,7 +439,7 @@ const Settings = () => {
 
             <Button
               variant="text"
-              onClick={() => navigate('/history')}
+              onClick={() => navigate('/tokens')}
               sx={{ mb: 4 }}
             >
               View Transaction History

@@ -295,7 +295,7 @@ const SignUp = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                helperText="Must be at least 6 characters"
+                helperText="8+ characters, one uppercase letter & one number"
                 sx={{ mb: 2 }}
                 InputProps={{
                   startAdornment: (

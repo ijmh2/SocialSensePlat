@@ -32,7 +32,7 @@ const MotionBox = motion(Box);
 const Login = () => {
   const theme = useTheme();
   const navigate = useNavigate();
-  const { signIn, signInWithGoogle } = useAuth();
+  const { signIn, signInWithGoogle, resetPassword } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -53,6 +53,19 @@ const Login = () => {
       setError(err.message || 'Failed to sign in');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setError('Enter your email address above, then click "Forgot password?"');
+      return;
+    }
+    try {
+      await resetPassword(email);
+      toast.success('Password reset email sent — check your inbox');
+    } catch (err) {
+      setError(err.message || 'Failed to send reset email');
     }
   };
 
@@ -209,10 +222,11 @@ const Login = () => {
 
               <Box sx={{ textAlign: 'right', mb: 3 }}>
                 <Link
-                  component={RouterLink}
-                  to="/forgot-password"
+                  component="button"
+                  type="button"
                   variant="body2"
-                  sx={{ color: 'text.secondary' }}
+                  onClick={handleForgotPassword}
+                  sx={{ color: 'text.secondary', background: 'none', border: 'none', cursor: 'pointer' }}
                 >
                   Forgot password?
                 </Link>

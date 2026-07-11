@@ -182,7 +182,7 @@ const AccountScoreCard = ({ score = null, videoCount = 0, hasScore = false }) =>
           </Box>
 
           <Typography variant="body2" sx={{ color: colors.textSecondary, mb: 3 }}>
-            Your Account Score reflects the average quality and engagement of your content based on AI analysis of viewer comments. The AI uses harsh, expert-level evaluation to give you honest feedback.
+            Your Account Score reflects the average quality and engagement of your content, based on sentiment signals from viewer comments across your analyses.
           </Typography>
 
           <Button

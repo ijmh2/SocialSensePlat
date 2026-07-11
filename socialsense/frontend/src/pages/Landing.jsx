@@ -68,7 +68,7 @@ const pricing = [
     name: '1000 Tokens',
     price: '$34.99',
     description: 'For agencies',
-    features: ['1M YouTube comments', '100K TikTok comments', 'Sentiment analysis', 'Priority support'],
+    features: ['1M YouTube comments', '100K TikTok comments', 'Sentiment analysis', 'AI analysis (coming soon)'],
   },
 ];
 
@@ -377,7 +377,7 @@ const Landing = () => {
                 fontSize: '1.1rem',
               }}
             >
-              Start Free Trial
+              Get Started Free
             </Button>
           </MotionBox>
         </Box>

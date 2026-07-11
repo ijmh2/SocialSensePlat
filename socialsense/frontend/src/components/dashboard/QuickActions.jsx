@@ -14,7 +14,7 @@ const QuickActions = () => {
       label: 'New Analysis',
       description: 'Analyze a video',
       icon: <Add sx={{ fontSize: 24 }} />,
-      path: '/analyze',
+      path: '/analyze/comments',
       primary: true,
     },
     {
