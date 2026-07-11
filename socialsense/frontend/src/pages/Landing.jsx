@@ -55,20 +55,20 @@ const pricing = [
     name: '100 Tokens',
     price: '$4.99',
     description: 'Perfect for trying out',
-    features: ['10K YouTube comments', '1K TikTok comments', 'Sentiment analysis', 'AI analysis (coming soon)'],
+    features: ['100K YouTube comments', '10K TikTok comments', 'Sentiment analysis', 'AI analysis (coming soon)'],
   },
   {
     name: '500 Tokens',
     price: '$19.99',
     description: 'Best for creators',
-    features: ['50K YouTube comments', '5K TikTok comments', 'Sentiment analysis', 'AI analysis (coming soon)'],
+    features: ['500K YouTube comments', '50K TikTok comments', 'Sentiment analysis', 'AI analysis (coming soon)'],
     popular: true,
   },
   {
     name: '1000 Tokens',
     price: '$34.99',
     description: 'For agencies',
-    features: ['100K YouTube comments', '10K TikTok comments', 'Sentiment analysis', 'Priority support'],
+    features: ['1M YouTube comments', '100K TikTok comments', 'Sentiment analysis', 'Priority support'],
   },
 ];
 

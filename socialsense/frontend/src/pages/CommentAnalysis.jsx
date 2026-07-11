@@ -499,9 +499,25 @@ const CommentAnalysis = () => {
               value={maxComments}
               onChange={(e) => setMaxComments(Math.max(1, parseInt(e.target.value) || 100))}
               helperText={`Recommended: ${platform === 'youtube' ? '1000-5000' : '100-500'} for best results`}
-              sx={{ mb: 3 }}
+              sx={{ mb: 2 }}
               inputProps={{ min: 1, max: platform === 'youtube' ? 50000 : 5000 }}
             />
+
+            <Alert severity="info" sx={{ mb: 3, borderRadius: '12px' }}>
+              <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>Comment filters applied automatically</Typography>
+              <Typography variant="body2" sx={{ color: 'inherit' }}>
+                To improve result quality, the following are removed before analysis:
+              </Typography>
+              <Box component="ul" sx={{ m: 0, pl: 2.5, mt: 0.5 }}>
+                <li><Typography variant="body2"><strong>Emoji-only</strong> comments (no text)</Typography></li>
+                <li><Typography variant="body2"><strong>Spam & promotional</strong> (links, "subscribe to me", WhatsApp/Telegram)</Typography></li>
+                <li><Typography variant="body2"><strong>Exact duplicates</strong> (copy-paste spam)</Typography></li>
+                <li><Typography variant="body2"><strong>Generic noise</strong> ("first!", "hi", "notification squad") — flagged but kept</Typography></li>
+              </Box>
+              <Typography variant="caption" sx={{ color: 'inherit', mt: 0.5, display: 'block' }}>
+                Your token cost is based on comments fetched before filtering, not after.
+              </Typography>
+            </Alert>
 
             {AI_ENABLED && <>
               <Box sx={{ mb: 2 }}>
