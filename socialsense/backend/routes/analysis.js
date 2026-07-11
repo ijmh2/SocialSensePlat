@@ -34,6 +34,10 @@ import { validateEngagement } from '../services/engagementValidator.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const router = express.Router();
 
+// AI features are only active when AI_ENABLED=true is set in the environment
+const AI_ENABLED = process.env.AI_ENABLED === 'true';
+if (!AI_ENABLED) console.log('ℹ️  AI features disabled (set AI_ENABLED=true to enable)');
+
 /**
  * Helper to safely delete temp files with proper logging
  */
@@ -190,22 +194,11 @@ router.post('/estimate', authenticate, async (req, res) => {
       tokenCost += Math.max(1, Math.ceil(cappedComments / 100) * TOKEN_COSTS.tiktok_per_100_comments);
     }
 
-    if (include_text_analysis) {
-      tokenCost += TOKEN_COSTS.text_analysis;
-    }
-
-    if (include_marketing) {
-      tokenCost += TOKEN_COSTS.marketing_analysis;
-    }
-
-    // Video upload costs 20 tokens (Whisper + GPT-4o vision)
-    if (has_video) {
-      tokenCost += TOKEN_COSTS.video_analysis;
-    }
-
-    // Engagement validation costs 20 tokens (GPT-5.2 powered)
-    if (include_engagement) {
-      tokenCost += TOKEN_COSTS.engagement_validation;
+    if (AI_ENABLED) {
+      if (include_text_analysis) tokenCost += TOKEN_COSTS.text_analysis;
+      if (include_marketing) tokenCost += TOKEN_COSTS.marketing_analysis;
+      if (has_video) tokenCost += TOKEN_COSTS.video_analysis;
+      if (include_engagement) tokenCost += TOKEN_COSTS.engagement_validation;
     }
 
     tokenCost = Math.max(1, tokenCost);
@@ -227,10 +220,10 @@ router.post('/estimate', authenticate, async (req, res) => {
         scraping: platform === 'youtube'
           ? Math.max(1, Math.ceil(cappedComments / 1000) * TOKEN_COSTS.youtube_per_1000_comments)
           : Math.max(1, Math.ceil(cappedComments / 100) * TOKEN_COSTS.tiktok_per_100_comments),
-        text_analysis: include_text_analysis ? TOKEN_COSTS.text_analysis : 0,
-        marketing: include_marketing ? TOKEN_COSTS.marketing_analysis : 0,
-        video: has_video ? TOKEN_COSTS.video_analysis : 0,
-        engagement: include_engagement ? TOKEN_COSTS.engagement_validation : 0,
+        text_analysis: AI_ENABLED && include_text_analysis ? TOKEN_COSTS.text_analysis : 0,
+        marketing: AI_ENABLED && include_marketing ? TOKEN_COSTS.marketing_analysis : 0,
+        video: AI_ENABLED && has_video ? TOKEN_COSTS.video_analysis : 0,
+        engagement: AI_ENABLED && include_engagement ? TOKEN_COSTS.engagement_validation : 0,
       },
     });
   } catch (error) {
@@ -429,15 +422,14 @@ router.post('/comments', authenticate, uploadFields, uploadRateLimiter, async (r
       tokenCost += Math.max(1, Math.ceil(commentsToFetch / 100) * TOKEN_COSTS.tiktok_per_100_comments);
     }
 
-    const includeText = include_text_analysis === 'true' || include_text_analysis === true;
-    const includeMkt = include_marketing === 'true' || include_marketing === true;
-    const includeEng = include_engagement === 'true' || include_engagement === true;
+    const includeText = AI_ENABLED && (include_text_analysis === 'true' || include_text_analysis === true);
+    const includeMkt = AI_ENABLED && (include_marketing === 'true' || include_marketing === true);
+    const includeEng = AI_ENABLED && (include_engagement === 'true' || include_engagement === true);
     if (includeText) tokenCost += TOKEN_COSTS.text_analysis;
     if (includeMkt) tokenCost += TOKEN_COSTS.marketing_analysis;
     if (includeEng) tokenCost += TOKEN_COSTS.engagement_validation;
 
-    // Video upload costs 20 tokens (Whisper + GPT-4o vision)
-    if (videoFile) {
+    if (AI_ENABLED && videoFile) {
       tokenCost += TOKEN_COSTS.video_analysis;
       console.log(`[Analysis] Video file detected: ${videoFile.originalname} (${(videoFile.size / 1024 / 1024).toFixed(1)}MB) - adding ${TOKEN_COSTS.video_analysis} tokens`);
     }
@@ -963,11 +955,11 @@ async function processAnalysisJob({
     }).eq('id', analysisId);
     if (commentsError) console.error('Safety Save Comments Error:', commentsError);
 
-    // 5. Video Processing (if video file provided)
+    // 5. Video Processing (only when AI_ENABLED and video file provided)
     let videoFrames = null;
     let videoTranscript = null;
 
-    if (videoFilePath) {
+    if (AI_ENABLED && videoFilePath) {
       // 5a. Extract frames
       if (request_id) progressMap.set(request_id, { stage: 'extracting_video', count: rawComments.length, percent: 78 });
       try {
@@ -993,9 +985,14 @@ async function processAnalysisJob({
       await safeUnlink(videoFilePath, 'videoFilePath');
     }
 
+    // Clean up uploaded video if AI is disabled (nothing to process)
+    if (!AI_ENABLED && videoFilePath) {
+      await safeUnlink(videoFilePath, 'videoFilePath (AI disabled)');
+    }
+
     // 6. Prepare Marketing Context
     let marketingContext = null;
-    if (includeMkt && product_description) {
+    if (AI_ENABLED && includeMkt && product_description) {
       marketingContext = { description: product_description, image_base64: null };
       if (productImagePath) {
         try {
@@ -1005,9 +1002,9 @@ async function processAnalysisJob({
       }
     }
 
-    // 7. AI Analysis (includes video transcript + frames if available)
+    // 7. AI Analysis (only when AI_ENABLED and text analysis requested)
     let analysisResult = { summary: null, keywords: [], themes: [], stats: null };
-    if (includeText) {
+    if (AI_ENABLED && includeText) {
       if (request_id) progressMap.set(request_id, { stage: 'analyzing_ai', count: rawComments.length, percent: 88 });
 
       try {
@@ -1030,9 +1027,9 @@ async function processAnalysisJob({
       };
     }
 
-    // 8. Engagement Validation (if requested)
+    // 8. Engagement Validation (only when AI_ENABLED and requested)
     let engagementResult = null;
-    if (includeEng && videoDetails) {
+    if (AI_ENABLED && includeEng && videoDetails) {
       if (request_id) progressMap.set(request_id, { stage: 'validating_engagement', count: rawComments.length, percent: 92 });
       try {
         console.log('[Analysis] Running engagement validation...');

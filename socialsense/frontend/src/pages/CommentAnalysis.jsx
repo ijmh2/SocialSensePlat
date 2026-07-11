@@ -42,7 +42,10 @@ import TikTokIcon from '../components/icons/TikTokIcon';
 
 const MotionBox = motion(Box);
 
-const steps = ['Enter URL & Upload', 'Configure Options', 'Review & Analyze'];
+// AI features are only shown when VITE_AI_ENABLED=true is set
+const AI_ENABLED = import.meta.env.VITE_AI_ENABLED === 'true';
+
+const steps = ['Enter URL', 'Configure Options', 'Review & Analyze'];
 
 const CommentAnalysis = () => {
   const navigate = useNavigate();
@@ -109,7 +112,7 @@ const CommentAnalysis = () => {
               setProgressStage('Transcribing video audio...');
             } else if (data.stage === 'analyzing_ai') {
               const waitTime = data.count > 1000 ? '3-5 minutes' : '30-60 seconds';
-              setProgressStage(`Running AI analysis (this takes ${waitTime})...`);
+              setProgressStage(AI_ENABLED ? `Running AI analysis (this takes ${waitTime})...` : 'Finalising analysis...');
             } else if (data.stage === 'validating_engagement') {
               setProgressStage('Validating engagement authenticity...');
             } else if (data.stage === 'fetching_details') {
@@ -424,8 +427,8 @@ const CommentAnalysis = () => {
               sx={{ mb: 3 }}
             />
 
-            {/* Optional Video Upload */}
-            <Card sx={{ mb: 3, borderRadius: '16px', boxShadow: shadows.sm, background: colors.background }}>
+            {/* Optional Video Upload — only shown when AI is enabled */}
+            {AI_ENABLED && <Card sx={{ mb: 3, borderRadius: '16px', boxShadow: shadows.sm, background: colors.background }}>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                   <VideoFile sx={{ color: colors.primary }} />
@@ -461,7 +464,7 @@ const CommentAnalysis = () => {
                   </Button>
                 )}
               </CardContent>
-            </Card>
+            </Card>}
 
             <Button
               fullWidth
@@ -500,72 +503,74 @@ const CommentAnalysis = () => {
               inputProps={{ min: 1, max: platform === 'youtube' ? 50000 : 5000 }}
             />
 
-            <Box sx={{ mb: 2 }}>
-              <FormControlLabel
-                control={<Checkbox checked={includeTextAnalysis} onChange={(e) => setIncludeTextAnalysis(e.target.checked)} />}
-                label={
-                  <Box>
-                    <Typography variant="body1" sx={{ color: colors.textPrimary }}>AI Text Analysis</Typography>
-                    <Typography variant="caption" sx={{ color: colors.textSecondary }}>
-                      Get actionable insights and recommendations (+5 tokens)
-                    </Typography>
-                  </Box>
-                }
-                sx={{ display: 'flex', alignItems: 'flex-start' }}
-              />
-            </Box>
-
-            <Box sx={{ mb: 2 }}>
-              <FormControlLabel
-                control={<Checkbox checked={includeMarketing} onChange={(e) => setIncludeMarketing(e.target.checked)} />}
-                label={
-                  <Box>
-                    <Typography variant="body1" sx={{ color: colors.textPrimary }}>Marketing Analysis</Typography>
-                    <Typography variant="caption" sx={{ color: colors.textSecondary }}>
-                      Product positioning and creative recommendations (+5 tokens)
-                    </Typography>
-                  </Box>
-                }
-                sx={{ display: 'flex', alignItems: 'flex-start' }}
-              />
-            </Box>
-
-            <Box sx={{ mb: 2 }}>
-              <FormControlLabel
-                control={<Checkbox checked={includeEngagement} onChange={(e) => setIncludeEngagement(e.target.checked)} />}
-                label={
-                  <Box>
-                    <Typography variant="body1" sx={{ color: colors.textPrimary }}>Engagement Validation</Typography>
-                    <Typography variant="caption" sx={{ color: colors.textSecondary }}>
-                      Analyze engagement authenticity, detect bot patterns (+20 tokens)
-                    </Typography>
-                  </Box>
-                }
-                sx={{ display: 'flex', alignItems: 'flex-start' }}
-              />
-            </Box>
-
-            <Collapse in={includeMarketing}>
-              <Card sx={{ p: 2, mb: 3, borderRadius: '16px', boxShadow: shadows.sm, background: colors.background }}>
-                <Typography variant="body2" fontWeight={600} sx={{ mb: 2, color: colors.textPrimary }}>
-                  Product Information (Optional)
-                </Typography>
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={3}
-                  label="Product Description"
-                  placeholder="Describe your product..."
-                  value={productDescription}
-                  onChange={(e) => setProductDescription(e.target.value)}
-                  sx={{ mb: 2 }}
+            {AI_ENABLED && <>
+              <Box sx={{ mb: 2 }}>
+                <FormControlLabel
+                  control={<Checkbox checked={includeTextAnalysis} onChange={(e) => setIncludeTextAnalysis(e.target.checked)} />}
+                  label={
+                    <Box>
+                      <Typography variant="body1" sx={{ color: colors.textPrimary }}>AI Text Analysis</Typography>
+                      <Typography variant="caption" sx={{ color: colors.textSecondary }}>
+                        Get actionable insights and recommendations (+5 tokens)
+                      </Typography>
+                    </Box>
+                  }
+                  sx={{ display: 'flex', alignItems: 'flex-start' }}
                 />
-                <Button variant="outlined" component="label" startIcon={<Upload />} size="small">
-                  {productImage ? productImage.name : 'Upload Product Image'}
-                  <input type="file" hidden accept="image/*" onChange={handleImageUpload} />
-                </Button>
-              </Card>
-            </Collapse>
+              </Box>
+
+              <Box sx={{ mb: 2 }}>
+                <FormControlLabel
+                  control={<Checkbox checked={includeMarketing} onChange={(e) => setIncludeMarketing(e.target.checked)} />}
+                  label={
+                    <Box>
+                      <Typography variant="body1" sx={{ color: colors.textPrimary }}>Marketing Analysis</Typography>
+                      <Typography variant="caption" sx={{ color: colors.textSecondary }}>
+                        Product positioning and creative recommendations (+5 tokens)
+                      </Typography>
+                    </Box>
+                  }
+                  sx={{ display: 'flex', alignItems: 'flex-start' }}
+                />
+              </Box>
+
+              <Box sx={{ mb: 2 }}>
+                <FormControlLabel
+                  control={<Checkbox checked={includeEngagement} onChange={(e) => setIncludeEngagement(e.target.checked)} />}
+                  label={
+                    <Box>
+                      <Typography variant="body1" sx={{ color: colors.textPrimary }}>Engagement Validation</Typography>
+                      <Typography variant="caption" sx={{ color: colors.textSecondary }}>
+                        Analyze engagement authenticity, detect bot patterns (+20 tokens)
+                      </Typography>
+                    </Box>
+                  }
+                  sx={{ display: 'flex', alignItems: 'flex-start' }}
+                />
+              </Box>
+
+              <Collapse in={includeMarketing}>
+                <Card sx={{ p: 2, mb: 3, borderRadius: '16px', boxShadow: shadows.sm, background: colors.background }}>
+                  <Typography variant="body2" fontWeight={600} sx={{ mb: 2, color: colors.textPrimary }}>
+                    Product Information (Optional)
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={3}
+                    label="Product Description"
+                    placeholder="Describe your product..."
+                    value={productDescription}
+                    onChange={(e) => setProductDescription(e.target.value)}
+                    sx={{ mb: 2 }}
+                  />
+                  <Button variant="outlined" component="label" startIcon={<Upload />} size="small">
+                    {productImage ? productImage.name : 'Upload Product Image'}
+                    <input type="file" hidden accept="image/*" onChange={handleImageUpload} />
+                  </Button>
+                </Card>
+              </Collapse>
+            </>}
 
             <Divider sx={{ my: 3 }} />
 
@@ -632,75 +637,77 @@ const CommentAnalysis = () => {
               </Card>
             </Box>
 
-            <Collapse in={isMyVideo}>
-              <Card sx={{ p: 2, mb: 3, borderRadius: '16px', boxShadow: shadows.sm, background: colors.surface, border: `1px solid ${colors.border}` }}>
-                <Typography variant="body2" fontWeight={600} sx={{ mb: 1, color: colors.textPrimary }}>
-                  What do you think went well? (Optional)
-                </Typography>
-                <Typography variant="caption" sx={{ color: colors.textSecondary, display: 'block', mb: 2 }}>
-                  Write your self-assessment before seeing results. The AI will compare your beliefs against actual audience reactions.
-                </Typography>
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={3}
-                  placeholder="e.g., I think the hook worked well, the call-to-action was clear..."
-                  value={creatorNotes}
-                  onChange={(e) => setCreatorNotes(e.target.value)}
-                />
-              </Card>
-            </Collapse>
-
-            <Collapse in={isCompetitor}>
-              <Card sx={{ p: 2, mb: 3, borderRadius: '16px', boxShadow: shadows.sm, background: '#FEF2F2', border: '1px solid #FECACA' }}>
-                <Typography variant="body2" fontWeight={600} sx={{ mb: 1, color: '#991B1B' }}>
-                  What do you want to learn? (Optional)
-                </Typography>
-                <Typography variant="caption" sx={{ color: '#B91C1C', display: 'block', mb: 2 }}>
-                  Describe what you're trying to understand about this competitor. The AI will focus on extracting actionable competitive intelligence.
-                </Typography>
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={3}
-                  placeholder="e.g., How do they handle objections? What makes their audience engage? What can I copy?"
-                  value={competitorNotes}
-                  onChange={(e) => setCompetitorNotes(e.target.value)}
-                />
-              </Card>
-            </Collapse>
-
-            {videoFile && (
-              <Alert severity="success" sx={{ mb: 3, borderRadius: '16px' }} icon={<VideoFile />}>
-                <strong>Video attached:</strong> {videoFile.name} ({(videoFile.size / (1024 * 1024)).toFixed(1)} MB) — frames and audio will be analyzed
-              </Alert>
-            )}
-
-            <Divider sx={{ my: 3 }} />
-
-            {/* Feedback Tone */}
-            <Box sx={{ mb: 3 }}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={harshFeedback}
-                    onChange={(e) => setHarshFeedback(e.target.checked)}
-                    sx={{ color: '#E53E3E', '&.Mui-checked': { color: '#E53E3E' } }}
+            {AI_ENABLED && <>
+              <Collapse in={isMyVideo}>
+                <Card sx={{ p: 2, mb: 3, borderRadius: '16px', boxShadow: shadows.sm, background: colors.surface, border: `1px solid ${colors.border}` }}>
+                  <Typography variant="body2" fontWeight={600} sx={{ mb: 1, color: colors.textPrimary }}>
+                    What do you think went well? (Optional)
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: colors.textSecondary, display: 'block', mb: 2 }}>
+                    Write your self-assessment before seeing results. The AI will compare your beliefs against actual audience reactions.
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={3}
+                    placeholder="e.g., I think the hook worked well, the call-to-action was clear..."
+                    value={creatorNotes}
+                    onChange={(e) => setCreatorNotes(e.target.value)}
                   />
-                }
-                label={
-                  <Box>
-                    <Typography variant="body1" sx={{ color: colors.textPrimary }}>
-                      Harsh Feedback Mode
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: colors.textSecondary }}>
-                      Enable brutally honest criticism — not for the faint-hearted
-                    </Typography>
-                  </Box>
-                }
-                sx={{ display: 'flex', alignItems: 'flex-start' }}
-              />
-            </Box>
+                </Card>
+              </Collapse>
+
+              <Collapse in={isCompetitor}>
+                <Card sx={{ p: 2, mb: 3, borderRadius: '16px', boxShadow: shadows.sm, background: '#FEF2F2', border: '1px solid #FECACA' }}>
+                  <Typography variant="body2" fontWeight={600} sx={{ mb: 1, color: '#991B1B' }}>
+                    What do you want to learn? (Optional)
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#B91C1C', display: 'block', mb: 2 }}>
+                    Describe what you're trying to understand about this competitor. The AI will focus on extracting actionable competitive intelligence.
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={3}
+                    placeholder="e.g., How do they handle objections? What makes their audience engage? What can I copy?"
+                    value={competitorNotes}
+                    onChange={(e) => setCompetitorNotes(e.target.value)}
+                  />
+                </Card>
+              </Collapse>
+
+              {videoFile && (
+                <Alert severity="success" sx={{ mb: 3, borderRadius: '16px' }} icon={<VideoFile />}>
+                  <strong>Video attached:</strong> {videoFile.name} ({(videoFile.size / (1024 * 1024)).toFixed(1)} MB) — frames and audio will be analyzed
+                </Alert>
+              )}
+
+              <Divider sx={{ my: 3 }} />
+
+              {/* Feedback Tone */}
+              <Box sx={{ mb: 3 }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={harshFeedback}
+                      onChange={(e) => setHarshFeedback(e.target.checked)}
+                      sx={{ color: '#E53E3E', '&.Mui-checked': { color: '#E53E3E' } }}
+                    />
+                  }
+                  label={
+                    <Box>
+                      <Typography variant="body1" sx={{ color: colors.textPrimary }}>
+                        Harsh Feedback Mode
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: colors.textSecondary }}>
+                        Enable brutally honest criticism — not for the faint-hearted
+                      </Typography>
+                    </Box>
+                  }
+                  sx={{ display: 'flex', alignItems: 'flex-start' }}
+                />
+              </Box>
+            </>}
 
             <Box sx={{ display: 'flex', gap: 2 }}>
               <Button
@@ -940,7 +947,7 @@ const CommentAnalysis = () => {
         Analysis
       </Typography>
       <Typography variant="body1" sx={{ color: colors.textSecondary, mb: 4 }}>
-        Extract insights from YouTube or TikTok comments, with optional video analysis
+        Scrape and analyse comments from YouTube or TikTok — sentiment, keywords, and themes
       </Typography>
 
       {error && (
