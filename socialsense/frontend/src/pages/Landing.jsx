@@ -41,7 +41,7 @@ const features = [
   {
     icon: Psychology,
     title: 'AI Intelligence',
-    description: 'GPT-4 powered analysis provides actionable insights and marketing recommendations.',
+    description: 'GPT-4 powered analysis for actionable insights and marketing recommendations — coming soon.',
   },
   {
     icon: Speed,
@@ -55,20 +55,20 @@ const pricing = [
     name: '100 Tokens',
     price: '$4.99',
     description: 'Perfect for trying out',
-    features: ['10K YouTube comments', '1K TikTok comments', 'Basic analysis'],
+    features: ['10K YouTube comments', '1K TikTok comments', 'Sentiment analysis', 'AI analysis (coming soon)'],
   },
   {
     name: '500 Tokens',
     price: '$19.99',
     description: 'Best for creators',
-    features: ['50K YouTube comments', '5K TikTok comments', 'Full AI analysis', 'Marketing insights'],
+    features: ['50K YouTube comments', '5K TikTok comments', 'Sentiment analysis', 'AI analysis (coming soon)'],
     popular: true,
   },
   {
     name: '1000 Tokens',
     price: '$34.99',
     description: 'For agencies',
-    features: ['100K YouTube comments', '10K TikTok comments', 'Full AI analysis', 'Priority support'],
+    features: ['100K YouTube comments', '10K TikTok comments', 'Sentiment analysis', 'Priority support'],
   },
 ];
 
@@ -100,7 +100,7 @@ const Landing = () => {
             transition={{ duration: 0.6 }}
           >
             <Chip
-              label="AI-Powered Social Analytics"
+              label="Social Comment Analytics"
               sx={{
                 mb: 4,
                 background: alpha(theme.palette.primary.main, 0.1),
@@ -144,8 +144,7 @@ const Landing = () => {
                 lineHeight: 1.6,
               }}
             >
-              Transform social media comments into actionable insights with 
-              AI-powered analysis for YouTube and TikTok.
+              Scrape, analyse, and understand your audience comments from YouTube and TikTok — with AI-powered insights coming soon.
             </Typography>
 
             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>

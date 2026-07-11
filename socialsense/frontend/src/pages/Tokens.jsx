@@ -258,7 +258,7 @@ const Tokens = () => {
     return [
       `${ytComments.toLocaleString()} YouTube comments`,
       `${ttComments.toLocaleString()} TikTok comments`,
-      `${Math.floor(tokens / 10)} AI analyses`,
+      'Sentiment & keyword analysis',
       'CSV exports included',
       'No expiration',
     ];
@@ -269,9 +269,17 @@ const Tokens = () => {
       <Typography variant="h4" fontWeight={700} sx={{ mb: 1, color: colors.textPrimary }}>
         Get Tokens
       </Typography>
-      <Typography variant="body1" sx={{ color: colors.textSecondary, mb: 4 }}>
+      <Typography variant="body1" sx={{ color: colors.textSecondary, mb: 3 }}>
         Subscribe for the best value, or purchase tokens one-time
       </Typography>
+
+      <Alert
+        severity="info"
+        sx={{ mb: 4, borderRadius: '12px' }}
+      >
+        <strong>Currently available:</strong> YouTube & TikTok comment scraping with rule-based sentiment analysis and keyword extraction.{' '}
+        <strong>AI-powered analysis</strong> (GPT summaries, marketing insights, engagement validation) is coming soon — your tokens will carry over.
+      </Alert>
 
       {error && (
         <Alert
@@ -787,19 +795,21 @@ const Tokens = () => {
             </Typography>
           </Grid>
           <Grid item xs={12} md={3}>
-            <Typography variant="body2" fontWeight={600} sx={{ mb: 1, color: colors.textPrimary }}>
+            <Typography variant="body2" fontWeight={600} sx={{ mb: 1, color: colors.textMuted, display: 'flex', alignItems: 'center', gap: 1 }}>
               AI Analysis
+              <Chip label="Coming soon" size="small" sx={{ fontSize: 10, height: 18, background: alpha(colors.primary, 0.12), color: colors.primary }} />
             </Typography>
-            <Typography variant="body2" sx={{ color: colors.textSecondary }}>
-              +5 tokens for text analysis, +5 for marketing insights
+            <Typography variant="body2" sx={{ color: colors.textMuted }}>
+              GPT-powered text & marketing insights — launching soon
             </Typography>
           </Grid>
           <Grid item xs={12} md={3}>
-            <Typography variant="body2" fontWeight={600} sx={{ mb: 1, color: colors.textPrimary }}>
+            <Typography variant="body2" fontWeight={600} sx={{ mb: 1, color: colors.textMuted, display: 'flex', alignItems: 'center', gap: 1 }}>
               Engagement Check
+              <Chip label="Coming soon" size="small" sx={{ fontSize: 10, height: 18, background: alpha(colors.primary, 0.12), color: colors.primary }} />
             </Typography>
-            <Typography variant="body2" sx={{ color: colors.textSecondary }}>
-              +20 tokens for influencer authenticity validation
+            <Typography variant="body2" sx={{ color: colors.textMuted }}>
+              Influencer authenticity validation — launching soon
             </Typography>
           </Grid>
         </Grid>
