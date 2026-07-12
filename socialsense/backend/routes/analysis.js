@@ -298,15 +298,21 @@ const progressMap = new ProgressMap();
  * GET /api/analysis/progress/:requestId
  * Check analysis progress
  */
-router.get('/progress/:requestId', (req, res) => {
+router.get('/progress/:requestId', authenticate, (req, res) => {
   const { requestId } = req.params;
-  const progress = progressMap.get(requestId) || { stage: 'init', count: 0, percent: 0 };
+  if (!/^[a-zA-Z0-9_-]{1,64}$/.test(requestId)) {
+    return res.status(400).json({ error: 'Invalid request ID format' });
+  }
+  const progress = progressMap.get(requestId);
+  if (!progress) {
+    return res.status(404).json({ error: 'Analysis not found' });
+  }
   res.json(progress);
 });
 
 // POST /api/analysis/comments
 // Unified analysis: comments + optional video upload
-router.post('/comments', authenticate, uploadFields, uploadRateLimiter, async (req, res) => {
+router.post('/comments', authenticate, uploadRateLimiter, uploadFields, async (req, res) => {
   try {
     const {
       url,
@@ -328,11 +334,7 @@ router.post('/comments', authenticate, uploadFields, uploadRateLimiter, async (r
     const isMyVideo = is_my_video === 'true' || is_my_video === true;
     const isCompetitor = is_competitor === 'true' || is_competitor === true;
     const harshFeedback = harsh_feedback === 'true' || harsh_feedback === true;
-    console.log('[Analysis] is_my_video raw:', is_my_video, 'converted:', isMyVideo);
-    console.log('[Analysis] is_competitor raw:', is_competitor, 'converted:', isCompetitor);
-    console.log('[Analysis] harsh_feedback raw:', harsh_feedback, 'converted:', harshFeedback);
-    console.log('[Analysis] creator_notes:', creator_notes);
-    console.log('[Analysis] competitor_notes:', competitor_notes);
+    logger.debug('[Analysis] flags', { isMyVideo, isCompetitor, harshFeedback });
 
     if (!url || !platform) {
       return res.status(400).json({ error: 'URL and platform are required' });
@@ -431,10 +433,24 @@ router.post('/comments', authenticate, uploadFields, uploadRateLimiter, async (r
 
     if (AI_ENABLED && videoFile) {
       tokenCost += TOKEN_COSTS.video_analysis;
-      console.log(`[Analysis] Video file detected: ${videoFile.originalname} (${(videoFile.size / 1024 / 1024).toFixed(1)}MB) - adding ${TOKEN_COSTS.video_analysis} tokens`);
+      logger.debug('[Analysis] Video file detected', { name: videoFile.originalname, tokens: TOKEN_COSTS.video_analysis });
     }
 
-    console.log(`[Analysis] Total token cost: ${tokenCost} (scraping: ${platform === 'youtube' ? Math.max(1, Math.ceil(commentsToFetch / 1000)) : Math.max(1, Math.ceil(commentsToFetch / 100))}, text: ${includeText ? TOKEN_COSTS.text_analysis : 0}, marketing: ${includeMkt ? TOKEN_COSTS.marketing_analysis : 0}, video: ${videoFile ? TOKEN_COSTS.video_analysis : 0}, engagement: ${includeEng ? TOKEN_COSTS.engagement_validation : 0})`);
+    logger.debug('[Analysis] Token cost calculated', { tokenCost, platform });
+
+    // Guard: if the client sent an expected cost (from the estimate step), reject if it
+    // differs so users are never charged more than they approved.
+    const expectedCost = req.body.expected_cost !== undefined ? parseInt(req.body.expected_cost) : null;
+    if (expectedCost !== null && !isNaN(expectedCost) && tokenCost > expectedCost) {
+      if (productImageFile) await safeUnlink(productImageFile.path, 'productImage');
+      if (videoFile) await safeUnlink(videoFile.path, 'videoFile');
+      return res.status(409).json({
+        error: 'Token cost changed since estimate',
+        expected_cost: expectedCost,
+        actual_cost: tokenCost,
+        code: 'COST_CHANGED',
+      });
+    }
 
     // 3. Check Balance & Deduct
     const { data: deductResult, error: deductError } = await supabaseAdmin.rpc('deduct_tokens', {
@@ -686,7 +702,8 @@ router.patch('/:id/action-items', authenticate, validateUUID('id'), async (req, 
     const { error: updateError } = await supabaseAdmin
       .from('analyses')
       .update({ action_items: actionItems })
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', req.user.id);
 
     if (updateError) {
       console.error('Action items update error:', updateError);
@@ -718,12 +735,20 @@ router.get('/:id/export', authenticate, validateUUID('id'), async (req, res) => 
       return res.status(404).json({ error: 'Analysis not found' });
     }
 
-    const comments = analysis.raw_comments || [];
+    const EXPORT_ROW_LIMIT = 10000;
+    const comments = (analysis.raw_comments || []).slice(0, EXPORT_ROW_LIMIT);
+
+    const safeCsvField = (val) => {
+      const str = String(val || '').replace(/"/g, '""');
+      // Prefix formula-injection characters so spreadsheet apps don't execute them
+      const safe = /^[=+\-@\t\r]/.test(str) ? `'${str}` : str;
+      return `"${safe}"`;
+    };
 
     const headers = ['user', 'text', 'likes'];
     const rows = comments.map(c => [
-      `"${(c.user || '').replace(/"/g, '""')}"`,
-      `"${(c.text || '').replace(/"/g, '""')}"`,
+      safeCsvField(c.user),
+      safeCsvField(c.text),
       c.likes || 0,
     ].join(','));
 
@@ -1100,17 +1125,18 @@ router.get('/compare/:id1/:id2', authenticate, validateUUID('id1'), validateUUID
   try {
     const { id1, id2 } = req.params;
 
-    // Fetch both analyses (must belong to user)
+    // Fetch both analyses (must belong to user) — exclude large JSONB columns not needed for comparison
+    const COMPARE_COLUMNS = 'id,user_id,platform,url,video_id,video_title,video_description,status,created_at,completed_at,comment_count,filtered_count,sentiment_data,keyword_data,theme_data,action_items,is_my_video,is_competitor,filter_stats';
     const [result1, result2] = await Promise.all([
       supabaseAdmin
         .from('analyses')
-        .select('*')
+        .select(COMPARE_COLUMNS)
         .eq('id', id1)
         .eq('user_id', req.user.id)
         .single(),
       supabaseAdmin
         .from('analyses')
-        .select('*')
+        .select(COMPARE_COLUMNS)
         .eq('id', id2)
         .eq('user_id', req.user.id)
         .single(),

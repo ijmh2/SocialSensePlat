@@ -2,6 +2,7 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { supabaseAdmin } from '../config/supabase.js';
 import { authenticate } from '../middleware/auth.js';
+import { isValidUrl } from '../middleware/validation.js';
 
 const router = express.Router();
 
@@ -44,7 +45,11 @@ router.get('/profile', authenticate, async (req, res) => {
 router.put('/profile', authenticate, async (req, res) => {
   try {
     const { full_name, avatar_url } = req.body;
-    
+
+    if (avatar_url !== undefined && avatar_url !== null && !isValidUrl(avatar_url)) {
+      return res.status(400).json({ error: 'avatar_url must be a valid HTTP/HTTPS URL' });
+    }
+
     const { data: profile, error } = await supabaseAdmin
       .from('profiles')
       .update({ full_name, avatar_url })
@@ -108,7 +113,7 @@ router.get('/transactions', authenticate, async (req, res) => {
 
     const { data: transactions, error, count } = await supabaseAdmin
       .from('token_transactions')
-      .select('*', { count: 'exact' })
+      .select('id, user_id, amount, balance_after, type, description, created_at', { count: 'exact' })
       .eq('user_id', req.user.id)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
@@ -254,10 +259,7 @@ router.post('/apply-referral', authenticate, async (req, res) => {
     // Update referrer's count and referred user's referred_by field in parallel
     // Use Promise.allSettled to prevent unhandled rejections
     const profileResults = await Promise.allSettled([
-      supabaseAdmin
-        .from('profiles')
-        .update({ referral_count: (referrer.referral_count || 0) + 1 })
-        .eq('id', referrer.id),
+      supabaseAdmin.rpc('increment_referral_count', { p_user_id: referrer.id }),
       supabaseAdmin
         .from('profiles')
         .update({ referred_by: referrer.id })

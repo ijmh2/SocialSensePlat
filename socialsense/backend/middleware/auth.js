@@ -29,7 +29,7 @@ export const authenticate = async (req, res, next) => {
     // Get user profile with token balance
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('*')
+      .select('id, token_balance, subscription_status, subscription_plan')
       .eq('id', user.id)
       .single();
 

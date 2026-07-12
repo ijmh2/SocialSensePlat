@@ -62,8 +62,8 @@ app.use('/api/', limiter);
 app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }));
 
 // Parse JSON for other routes
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // Health check
 app.get('/api/health', (req, res) => {

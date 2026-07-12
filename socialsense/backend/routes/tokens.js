@@ -171,9 +171,13 @@ router.post('/checkout', authenticate, checkoutLimiter, async (req, res) => {
 router.get('/verify-session/:sessionId', authenticate, async (req, res) => {
   try {
     const { sessionId } = req.params;
-    
+
+    if (!/^cs_(test|live)_[A-Za-z0-9]+$/.test(sessionId)) {
+      return res.status(400).json({ error: 'Invalid session ID format' });
+    }
+
     logger.debug('Verifying session', { sessionId });
-    
+
     // Retrieve session from Stripe
     let session;
     try {
@@ -440,21 +444,27 @@ router.post('/subscribe', authenticate, checkoutLimiter, async (req, res) => {
       customerId = stripeCustomer.stripe_customer_id;
     }
 
-    // Create a Stripe Price for the subscription (or use existing)
-    // In production, you'd create these prices in Stripe Dashboard and store the price IDs
-    // For now, we'll create them dynamically
-    const price = await stripe.prices.create({
-      currency: 'usd',
-      unit_amount: plan.price,
-      recurring: { interval: 'month' },
-      product_data: {
-        name: `CommentIQ ${plan.name} Subscription`,
-        metadata: {
-          plan_id: plan.id,
-          tokens_per_month: plan.tokens_per_month.toString(),
+    // Look up an existing price for this plan by lookup_key before creating a new one
+    // to avoid polluting the Stripe catalog with duplicate Price objects.
+    const lookupKey = `commentiq_${plan.id}`;
+    const existingPrices = await stripe.prices.list({ lookup_keys: [lookupKey], active: true });
+    let price = existingPrices.data[0];
+
+    if (!price) {
+      price = await stripe.prices.create({
+        currency: 'usd',
+        unit_amount: plan.price,
+        recurring: { interval: 'month' },
+        lookup_key: lookupKey,
+        product_data: {
+          name: `CommentIQ ${plan.name} Subscription`,
+          metadata: {
+            plan_id: plan.id,
+            tokens_per_month: plan.tokens_per_month.toString(),
+          },
         },
-      },
-    });
+      });
+    }
 
     // Create subscription checkout session
     const session = await stripe.checkout.sessions.create({

@@ -1,5 +1,5 @@
 import express from 'express';
-import stripe, { SUBSCRIPTION_PLANS } from '../config/stripe.js';
+import stripe from '../config/stripe.js';
 import { supabaseAdmin } from '../config/supabase.js';
 import logger from '../utils/logger.js';
 
@@ -62,10 +62,10 @@ router.post('/stripe', async (req, res) => {
             });
 
             if (error) {
-              logger.error('Failed to add tokens via webhook', error);
-              return res.status(500).json({ error: 'Failed to add tokens' });
+              logger.error('Failed to add tokens via webhook — manual remediation required', { userId, tokens, sessionId: session.id, error });
+            } else {
+              logger.info('Tokens added via webhook', { tokens, userId });
             }
-            logger.info('Tokens added via webhook', { tokens, userId });
           }
         }
       }
@@ -94,8 +94,7 @@ router.post('/stripe', async (req, res) => {
             .eq('id', userId);
 
           if (updateError) {
-            logger.error('Failed to update subscription', updateError);
-            return res.status(500).json({ error: 'Failed to update subscription' });
+            logger.error('Failed to update subscription — manual remediation required', { userId, planId, error: updateError });
           }
 
           // Add initial subscription tokens
@@ -156,8 +155,7 @@ router.post('/stripe', async (req, res) => {
             });
 
             if (tokenError) {
-              logger.error('Failed to add renewal tokens', tokenError);
-              return res.status(500).json({ error: 'Failed to add renewal tokens' });
+              logger.error('Failed to add renewal tokens — manual remediation required', { userId, tokensPerMonth, invoiceId: invoice.id, error: tokenError });
             }
 
             logger.info('Subscription renewed', { userId, tokensPerMonth });
