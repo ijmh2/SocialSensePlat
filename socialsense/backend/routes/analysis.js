@@ -11,6 +11,7 @@ import { authenticate } from '../middleware/auth.js';
 import { validateUUID } from '../middleware/validation.js';
 import { supabaseAdmin } from '../config/supabase.js';
 import { TOKEN_COSTS } from '../config/stripe.js';
+import logger from '../utils/logger.js';
 
 // Maximum comments to fetch (keeps processing fast and stable)
 const MAX_COMMENTS = 100000;
