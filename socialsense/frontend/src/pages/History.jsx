@@ -250,17 +250,17 @@ const History = () => {
           </Box>
         ) : analyses.length === 0 ? (
           <Box sx={{ textAlign: 'center', py: 6, px: 3 }}>
-            <Typography variant="h6" sx={{ mb: 2, color: colors.textSecondary }}>
-              No analyses found
+            <Typography variant="h6" sx={{ mb: 1, color: colors.textSecondary }}>
+              No analyses yet
             </Typography>
             <Typography variant="body2" sx={{ mb: 3, color: colors.textMuted }}>
-              Start by analyzing a video to see your history here
+              Paste a YouTube or TikTok video URL to run your first analysis.
             </Typography>
             <Button
               variant="contained"
               onClick={() => navigate('/analyze/comments')}
             >
-              Start Analysis
+              Analyse a video
             </Button>
           </Box>
         ) : (

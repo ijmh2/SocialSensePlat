@@ -5,6 +5,7 @@ import { Box, CircularProgress } from '@mui/material';
 import { useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
 import ErrorBoundary from './components/ErrorBoundary';
+import CookieBanner from './components/CookieBanner';
 
 // Lazy load pages for better performance
 const Landing = lazy(() => import('./pages/Landing'));
@@ -215,6 +216,7 @@ function App() {
         {/* Catch all - redirect to dashboard or landing */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <CookieBanner />
     </Suspense>
     </ErrorBoundary>
   );

@@ -1,4 +1,4 @@
-import { Box, Typography, IconButton, Tooltip } from '@mui/material';
+import { Box, Typography, IconButton, Tooltip, Button } from '@mui/material';
 import { YouTube, ChevronRight, CheckCircle, Error as ErrorIcon, Schedule } from '@mui/icons-material';
 import TikTokIcon from '../icons/TikTokIcon';
 import { useNavigate } from 'react-router-dom';
@@ -110,10 +110,16 @@ const RecentAnalysesTable = ({ analyses = [], onViewAll }) => {
 
       {/* Table Body */}
       {analyses.length === 0 ? (
-        <Box sx={{ padding: '40px 20px', textAlign: 'center' }}>
-          <Typography variant="body2" sx={{ color: colors.textMuted }}>
-            No analyses yet. Start by analyzing your first video!
+        <Box sx={{ padding: '48px 20px', textAlign: 'center' }}>
+          <Typography variant="h6" fontWeight={600} sx={{ color: colors.textSecondary, mb: 1 }}>
+            No analyses yet
           </Typography>
+          <Typography variant="body2" sx={{ color: colors.textMuted, mb: 3 }}>
+            Paste a YouTube or TikTok video URL to run your first analysis.
+          </Typography>
+          <Button variant="contained" onClick={() => navigate('/analyze/comments')}>
+            Analyse a video
+          </Button>
         </Box>
       ) : (
         <Box>

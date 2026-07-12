@@ -411,7 +411,8 @@ const CommentAnalysis = () => {
                 <>
                   <strong>TikTok URL formats:</strong><br />
                   • https://www.tiktok.com/@user/video/VIDEO_ID<br />
-                  • https://vm.tiktok.com/SHORTCODE
+                  • https://vm.tiktok.com/SHORTCODE<br /><br />
+                  <strong>Note:</strong> TikTok limits public comment access. Results may be partial depending on the video's privacy settings and comment volume.
                 </>
               )}
             </Alert>
