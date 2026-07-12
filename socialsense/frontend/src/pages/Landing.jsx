@@ -124,7 +124,7 @@ const Landing = () => {
                 fontSize: '1.15rem', fontWeight: 400, lineHeight: 1.75,
                 color: theme.palette.text.secondary, mb: 5, maxWidth: 460,
               }}>
-                Scrape thousands of YouTube and TikTok comments and instantly see sentiment, themes, and top keywords — no AI subscription needed.
+                Scrape thousands of YouTube and TikTok comments and instantly see sentiment, themes, and top keywords - no AI subscription needed.
               </Typography>
               <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 4 }}>
                 <Button
@@ -137,10 +137,10 @@ const Landing = () => {
                 </Button>
                 <Button
                   variant="outlined" size="large"
-                  onClick={() => navigate('/login')}
+                  onClick={() => navigate('/demo')}
                   sx={{ px: 4, py: 1.5 }}
                 >
-                  Sign in
+                  See a demo
                 </Button>
               </Box>
               <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
@@ -248,7 +248,7 @@ const Landing = () => {
             {[
               { n: '01', title: 'Paste a URL', body: "Drop in any YouTube or TikTok video URL. We'll fetch the comment count and metadata instantly." },
               { n: '02', title: 'We scrape & filter', body: 'Up to 1M YouTube or 100K TikTok comments fetched. Spam, duplicates, and emoji-only noise removed automatically.' },
-              { n: '03', title: 'See the signal', body: 'Sentiment breakdown, top keywords, recurring themes — all in one clean report you can export to CSV.' },
+              { n: '03', title: 'See the signal', body: 'Sentiment breakdown, top keywords, recurring themes - all in one clean report you can export to CSV.' },
             ].map((step, i) => (
               <Grid item xs={12} md={4} key={step.n}>
                 <MotionBox

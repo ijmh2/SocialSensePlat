@@ -427,7 +427,7 @@ const CommentAnalysis = () => {
               sx={{ mb: 3 }}
             />
 
-            {/* Optional Video Upload — only shown when AI is enabled */}
+            {/* Optional Video Upload -only shown when AI is enabled */}
             {AI_ENABLED && <Card sx={{ mb: 3, borderRadius: '16px', boxShadow: shadows.sm, background: colors.background }}>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
@@ -512,7 +512,7 @@ const CommentAnalysis = () => {
                 <li><Typography variant="body2"><strong>Emoji-only</strong> comments (no text)</Typography></li>
                 <li><Typography variant="body2"><strong>Spam & promotional</strong> (links, "subscribe to me", WhatsApp/Telegram)</Typography></li>
                 <li><Typography variant="body2"><strong>Exact duplicates</strong> (copy-paste spam)</Typography></li>
-                <li><Typography variant="body2"><strong>Generic noise</strong> ("first!", "hi", "notification squad") — flagged but kept</Typography></li>
+                <li><Typography variant="body2"><strong>Generic noise</strong> ("first!", "hi", "notification squad") - flagged but kept</Typography></li>
               </Box>
               <Typography variant="caption" sx={{ color: 'inherit', mt: 0.5, display: 'block' }}>
                 Your token cost is based on comments fetched before filtering, not after.
@@ -648,7 +648,7 @@ const CommentAnalysis = () => {
                   </Typography>
                 </Box>
                 <Typography variant="caption" sx={{ color: colors.textSecondary }}>
-                  Analyze rival content — won't affect your Account Score
+                  Analyze rival content - won't affect your Account Score
                 </Typography>
               </Card>
             </Box>
@@ -694,7 +694,7 @@ const CommentAnalysis = () => {
 
               {videoFile && (
                 <Alert severity="success" sx={{ mb: 3, borderRadius: '16px' }} icon={<VideoFile />}>
-                  <strong>Video attached:</strong> {videoFile.name} ({(videoFile.size / (1024 * 1024)).toFixed(1)} MB) — frames and audio will be analyzed
+                  <strong>Video attached:</strong> {videoFile.name} ({(videoFile.size / (1024 * 1024)).toFixed(1)} MB) - frames and audio will be analyzed
                 </Alert>
               )}
 
@@ -716,7 +716,7 @@ const CommentAnalysis = () => {
                         Harsh Feedback Mode
                       </Typography>
                       <Typography variant="caption" sx={{ color: colors.textSecondary }}>
-                        Enable brutally honest criticism — not for the faint-hearted
+                        Enable brutally honest criticism - not for the faint-hearted
                       </Typography>
                     </Box>
                   }
@@ -963,7 +963,7 @@ const CommentAnalysis = () => {
         Analysis
       </Typography>
       <Typography variant="body1" sx={{ color: colors.textSecondary, mb: 4 }}>
-        Scrape and analyse comments from YouTube or TikTok — sentiment, keywords, and themes
+        Scrape and analyse comments from YouTube or TikTok -sentiment, keywords, and themes
       </Typography>
 
       {error && (

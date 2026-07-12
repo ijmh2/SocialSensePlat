@@ -22,6 +22,7 @@ const Compare = lazy(() => import('./pages/Compare'));
 const Settings = lazy(() => import('./pages/Settings'));
 const TermsOfService = lazy(() => import('./pages/TermsOfService'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const Demo = lazy(() => import('./pages/Demo'));
 
 // Loading fallback
 const LoadingFallback = () => (
@@ -102,6 +103,7 @@ function App() {
         {/* Legal pages (public, no auth required) */}
         <Route path="/terms" element={<TermsOfService />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/demo" element={<Demo />} />
 
         {/* Protected routes with layout */}
         <Route
