@@ -497,6 +497,8 @@ router.post('/comments', authenticate, uploadRateLimiter, uploadFields, async (r
     // 5. Start Background Job
     processAnalysisJob({
       analysisId: analysis.id,
+      userId: req.user.id,
+      tokenCost,
       videoId,
       platform,
       commentsToFetch,
@@ -929,8 +931,31 @@ async function extractAudio(videoPath, timeoutMs = 5 * 60 * 1000) {
 }
 
 // Background Worker Function (Unified: comments + optional video + optional engagement)
+async function refundTokens(userId, analysisId, amount, reason) {
+  if (amount <= 0) return;
+  const { error } = await supabaseAdmin.rpc('refund_tokens', {
+    p_user_id: userId,
+    p_amount: amount,
+    p_analysis_id: analysisId,
+    p_description: reason,
+  });
+  if (error) {
+    logger.error('Token refund failed — manual remediation required', { userId, analysisId, amount, error });
+  } else {
+    logger.info('Token refund issued', { userId, analysisId, amount, reason });
+  }
+}
+
+function calcScrapingCost(platform, commentCount) {
+  if (platform === 'youtube') {
+    return Math.max(1, Math.ceil(commentCount / 1000) * TOKEN_COSTS.youtube_per_1000_comments);
+  }
+  return Math.max(1, Math.ceil(commentCount / 100) * TOKEN_COSTS.tiktok_per_100_comments);
+}
+
 async function processAnalysisJob({
-  analysisId, videoId, platform, commentsToFetch,
+  analysisId, userId, tokenCost,
+  videoId, platform, commentsToFetch,
   includeText, includeMkt, includeEng, product_description, productImagePath, videoFilePath, request_id, startTime,
   isMyVideo = false, isCompetitor = false, creatorNotes = null, competitorNotes = null, harshFeedback = false,
   videoDetails = null
@@ -957,6 +982,21 @@ async function processAnalysisJob({
     }
 
     if (!rawComments || !rawComments.length) throw new Error('No comments found');
+
+    // Partial refund: if fewer comments were fetched than charged for, refund the difference
+    if (tokenCost && userId) {
+      const aiCosts = (includeText ? TOKEN_COSTS.text_analysis : 0)
+        + (includeMkt ? TOKEN_COSTS.marketing_analysis : 0)
+        + (includeEng ? TOKEN_COSTS.engagement_validation : 0)
+        + (videoFilePath && AI_ENABLED ? TOKEN_COSTS.video_analysis : 0);
+      const paidScrapingCost = tokenCost - aiCosts;
+      const actualScrapingCost = calcScrapingCost(platform, rawComments.length);
+      const refundAmount = paidScrapingCost - actualScrapingCost;
+      if (refundAmount > 0) {
+        await refundTokens(userId, analysisId, refundAmount,
+          `Partial refund: fetched ${rawComments.length} of ${commentsToFetch} comments`);
+      }
+    }
 
     // 2. Process Comments (includes sentiment scoring)
     if (request_id) progressMap.set(request_id, { stage: 'processing', count: rawComments.length, percent: 72 });
@@ -1106,11 +1146,17 @@ async function processAnalysisJob({
     if (request_id) setTimeout(() => progressMap.delete(request_id), 60000);
 
   } catch (error) {
-    console.error('Job Error:', error);
+    logger.error('Job Error', { analysisId, message: error.message });
     await supabaseAdmin.from('analyses').update({
       status: 'failed',
       error_message: error.message
     }).eq('id', analysisId);
+
+    // Full refund on total failure — user got nothing
+    if (tokenCost && userId) {
+      await refundTokens(userId, analysisId, tokenCost,
+        `Full refund: analysis failed (${error.message.slice(0, 80)})`);
+    }
 
     if (productImagePath) await safeUnlink(productImagePath, 'productImagePath');
     if (videoFilePath) await safeUnlink(videoFilePath, 'videoFilePath');
