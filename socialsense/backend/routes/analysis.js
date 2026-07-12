@@ -478,6 +478,7 @@ router.post('/comments', authenticate, uploadRateLimiter, uploadFields, async (r
         video_url: url,
         video_title: videoDetails.title,
         tokens_used: tokenCost,
+        comments_requested: commentsToFetch,
         status: 'processing',
         has_video: !!videoFile,
         is_my_video: isMyVideo,

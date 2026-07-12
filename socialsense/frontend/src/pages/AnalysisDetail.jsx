@@ -458,8 +458,15 @@ const AnalysisDetail = () => {
       {/* Failed Alert */}
       {analysis.status === 'failed' && (
         <Alert severity="error" sx={{ mb: 4 }}>
-          <Typography fontWeight={600}>Analysis Failed</Typography>
-          <Typography>{analysis.error_message || 'An unexpected error occurred during analysis.'}</Typography>
+          <Typography fontWeight={600} sx={{ mb: 0.5 }}>Analysis Failed</Typography>
+          <Typography sx={{ mb: analysis.tokens_used > 0 ? 1 : 0 }}>
+            {analysis.error_message || 'An unexpected error occurred during analysis.'}
+          </Typography>
+          {analysis.tokens_used > 0 && (
+            <Typography variant="body2" sx={{ opacity: 0.85 }}>
+              {analysis.tokens_used} token{analysis.tokens_used !== 1 ? 's' : ''} have been refunded to your account.
+            </Typography>
+          )}
         </Alert>
       )}
 
@@ -665,6 +672,16 @@ const AnalysisDetail = () => {
           </Box>
         ))}
       </Box>
+
+      {/* Partial fetch notice */}
+      {analysis.status === 'completed'
+        && analysis.comments_requested
+        && analysis.comment_count < analysis.comments_requested && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          {analysis.comment_count?.toLocaleString()} of {analysis.comments_requested?.toLocaleString()} requested comments were available.
+          {' '}Any unused tokens have been refunded to your account automatically.
+        </Alert>
+      )}
 
       {/* Sentiment bar */}
       {sentimentPieData.length > 0 && (() => {
