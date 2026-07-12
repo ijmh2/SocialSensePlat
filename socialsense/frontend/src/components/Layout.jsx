@@ -87,7 +87,7 @@ const Layout = ({ children }) => {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        background: colors.background,
+        background: '#FAFBFF',
         overflow: 'hidden',
       }}
     >
@@ -235,9 +235,10 @@ const Layout = ({ children }) => {
                     py: 1.5,
                     px: isCollapsed ? 1.5 : 2,
                     justifyContent: isCollapsed ? 'center' : 'flex-start',
-                    background: isActive ? colors.primaryGlow : 'transparent',
+                    background: isActive ? alpha(colors.primary, 0.06) : 'transparent',
+                    borderLeft: isCollapsed ? 'none' : `3px solid ${isActive ? colors.primary : 'transparent'}`,
                     '&:hover': {
-                      background: isActive ? colors.primaryGlow : colors.surface,
+                      background: isActive ? alpha(colors.primary, 0.06) : colors.surface,
                     },
                   }}
                 >

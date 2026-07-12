@@ -187,10 +187,10 @@ const theme = createTheme({
           },
         },
         contained: {
-          background: gradients.primary,
+          background: colors.primary,
           color: '#FFFFFF',
           '&:hover': {
-            background: gradients.primary,
+            background: colors.primaryHover,
             boxShadow: shadows.buttonHover,
           },
         },

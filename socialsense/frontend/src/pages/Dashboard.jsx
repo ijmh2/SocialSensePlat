@@ -98,17 +98,19 @@ const Dashboard = () => {
       >
         <Box>
           <Typography
-            variant="h4"
             sx={{
-              fontWeight: 700,
+              fontSize: { xs: '2rem', md: '2.75rem' },
+              fontWeight: 800,
               color: colors.textPrimary,
-              mb: 0.5,
+              lineHeight: 1.1,
+              mb: 0.75,
+              fontFamily: '"Plus Jakarta Sans", sans-serif',
             }}
           >
             Welcome back, {profile?.full_name?.split(' ')[0] || 'there'}
           </Typography>
           <Typography variant="body1" sx={{ color: colors.textSecondary }}>
-            Here's an overview of your social media analytics
+            Here's what's happening with your analyses
           </Typography>
         </Box>
         <Button

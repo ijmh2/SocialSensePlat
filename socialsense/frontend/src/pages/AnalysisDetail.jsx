@@ -632,61 +632,68 @@ const AnalysisDetail = () => {
         />
       )}
 
-      {/* Stats Cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={6} md={3}>
-          <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Comment sx={{ fontSize: 32, color: theme.palette.primary.main, mb: 1 }} />
-              <Typography variant="h4" fontWeight={700}>
-                {analysis.comment_count?.toLocaleString() || 0}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Total Comments
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={6} md={3}>
-          <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <FilterAlt sx={{ fontSize: 32, color: theme.palette.secondary.main, mb: 1 }} />
-              <Typography variant="h4" fontWeight={700}>
-                {filterStats.after_hard_filters?.toLocaleString() || 0}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Analyzed
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={6} md={3}>
-          <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <TrendingUp sx={{ fontSize: 32, color: theme.palette.success.main, mb: 1 }} />
-              <Typography variant="h4" fontWeight={700}>
-                {keywords.length}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Keywords
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={6} md={3}>
-          <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Lightbulb sx={{ fontSize: 32, color: theme.palette.warning.main, mb: 1 }} />
-              <Typography variant="h4" fontWeight={700}>
-                {themes.length}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Themes
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      {/* Stats strip */}
+      <Box
+        sx={{
+          display: 'flex',
+          gap: 0,
+          mb: 4,
+          background: 'white',
+          border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+          borderRadius: '16px',
+          overflow: 'hidden',
+        }}
+      >
+        {[
+          { label: 'Comments fetched', value: analysis.comment_count?.toLocaleString() || '0', color: theme.palette.primary.main },
+          { label: 'After filtering', value: filterStats.after_hard_filters?.toLocaleString() || '0', color: theme.palette.secondary.main },
+          { label: 'Keywords', value: keywords.length, color: theme.palette.success.main },
+          { label: 'Themes', value: themes.length, color: theme.palette.warning.main },
+        ].map((s, i, arr) => (
+          <Box key={s.label} sx={{
+            flex: 1,
+            p: { xs: 2, sm: 3 },
+            borderRight: i < arr.length - 1 ? `1px solid ${alpha(theme.palette.primary.main, 0.08)}` : 'none',
+            textAlign: 'center',
+          }}>
+            <Typography sx={{ fontSize: { xs: '1.6rem', sm: '2rem' }, fontWeight: 800, color: s.color, lineHeight: 1, mb: 0.5 }}>
+              {s.value}
+            </Typography>
+            <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 500 }}>
+              {s.label}
+            </Typography>
+          </Box>
+        ))}
+      </Box>
+
+      {/* Sentiment bar */}
+      {sentimentPieData.length > 0 && (() => {
+        const total = sentimentPieData.reduce((s, d) => s + d.value, 0);
+        return (
+          <Box sx={{ mb: 4, p: 3, background: 'white', border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`, borderRadius: '16px' }}>
+            <Typography variant="body2" fontWeight={700} sx={{ color: theme.palette.text.secondary, textTransform: 'uppercase', letterSpacing: 0.8, mb: 2 }}>
+              Sentiment breakdown
+            </Typography>
+            <Box sx={{ display: 'flex', height: 10, borderRadius: '99px', overflow: 'hidden', gap: '2px', mb: 2 }}>
+              {sentimentPieData.map((d) => (
+                <Box key={d.name} sx={{ flex: d.value, background: d.color, '&:first-of-type': { borderRadius: '99px 0 0 99px' }, '&:last-of-type': { borderRadius: '0 99px 99px 0' } }} />
+              ))}
+            </Box>
+            <Box sx={{ display: 'flex', gap: { xs: 3, sm: 5 } }}>
+              {sentimentPieData.map((d) => (
+                <Box key={d.name}>
+                  <Typography variant="h5" fontWeight={800} sx={{ color: d.color, lineHeight: 1 }}>
+                    {total > 0 ? Math.round((d.value / total) * 100) : 0}%
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 500 }}>
+                    {d.name} &nbsp;·&nbsp; {d.value.toLocaleString()}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        );
+      })()}
 
       {/* Tabs */}
       <Card sx={{ mb: 3 }}>
@@ -898,15 +905,18 @@ const AnalysisDetail = () => {
                   <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
                     All Keywords
                   </Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
                     {keywords.map((k, i) => (
                       <Chip
                         key={k.word}
-                        label={`${k.word} (${k.count})`}
-                        size="small"
+                        label={`${k.word} · ${k.count}`}
+                        size={i < 5 ? 'medium' : 'small'}
                         sx={{
-                          background: alpha(COLORS[i % COLORS.length], 0.15),
+                          background: alpha(COLORS[i % COLORS.length], i < 5 ? 0.12 : 0.08),
                           color: COLORS[i % COLORS.length],
+                          fontWeight: i < 5 ? 700 : 500,
+                          fontSize: i < 3 ? '0.85rem' : '0.75rem',
+                          border: `1px solid ${alpha(COLORS[i % COLORS.length], 0.2)}`,
                         }}
                       />
                     ))}
