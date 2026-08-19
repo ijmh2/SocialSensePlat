@@ -1,14 +1,37 @@
-import OpenAI from 'openai';
 import fs from 'fs';
+import { z } from 'zod/v4';
+import { zodTextFormat } from 'openai/helpers/zod';
 import { extractThemesAndKeywords, stratifiedSample } from './commentProcessor.js';
+import { getAIModel, getOpenAIClient, isAIConfigured } from './aiClient.js';
 
-// AI features are gated by AI_ENABLED=true env var
-if (!process.env.OPENAI_API_KEY) {
-  console.warn('⚠️  OPENAI_API_KEY is not set — AI features will be unavailable (set AI_ENABLED=true to enable)');
+if (!isAIConfigured()) {
+  console.warn('OPENAI_API_KEY is not set — LLM features will be unavailable');
 }
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const scorePart = (max) => z.object({
+  score: z.number().int().min(0).max(max),
+  max: z.literal(max),
+  reason: z.string(),
+});
+
+export const CommentAnalysisSchema = z.object({
+  summary: z.string().describe('Concise markdown report grounded only in the supplied comments.'),
+  videoScore: z.number().int().min(0).max(100).nullable(),
+  priorityImprovement: z.string().nullable(),
+  scoreBreakdown: z.object({
+    engagement: scorePart(40),
+    contentFit: scorePart(30),
+    conversion: scorePart(20),
+    redFlags: scorePart(10),
+  }).nullable(),
+  notesAssessment: z.string().nullable(),
+  marketingInsights: z.string().nullable(),
+  competitorAnalysis: z.string().nullable(),
+  actionItems: z.array(z.object({
+    title: z.string(),
+    description: z.string(),
+    priority: z.enum(['high', 'medium', 'low']),
+  })).max(10),
 });
 
 /**
@@ -33,7 +56,7 @@ export async function transcribeAudio(audioFilePath) {
   console.log(`[AI] Transcribing audio: ${audioFilePath}`);
   const audioStream = fs.createReadStream(audioFilePath);
 
-  const transcription = await openai.audio.transcriptions.create({
+  const transcription = await getOpenAIClient().audio.transcriptions.create({
     file: audioStream,
     model: 'whisper-1',
     response_format: 'text',
@@ -41,186 +64,6 @@ export async function transcribeAudio(audioFilePath) {
 
   console.log(`[AI] Transcription complete: ${transcription.length} characters`);
   return transcription;
-}
-
-/**
- * Extract video score from AI response
- */
-function extractVideoScore(summary) {
-  const patterns = [
-    /\*\*Overall Score:\s*(\d{1,3})\/100\*\*/i,
-    /Overall Score:\s*(\d{1,3})\/100/i,
-    /\*\*Score:\s*(\d{1,3})\/100\*\*/i,
-    /Score:\s*(\d{1,3})\/100/i,
-    /(\d{1,3})\/100/i, // Fallback: any X/100 pattern
-  ];
-
-  for (const pattern of patterns) {
-    const match = summary.match(pattern);
-    if (match) {
-      const score = parseInt(match[1], 10);
-      if (score >= 0 && score <= 100) {
-        console.log('[OpenAI] Score extracted:', score, 'using pattern:', pattern.toString());
-        return score;
-      }
-    }
-  }
-  console.log('[OpenAI] No score found in response. Last 500 chars:', summary.slice(-500));
-  return null;
-}
-
-/**
- * Extract priority improvement from AI response
- */
-function extractPriorityImprovement(summary) {
-  const match = summary.match(/\*\*Priority Improvement:\*\*\s*([^\n]+)/i);
-  return match ? match[1].trim() : null;
-}
-
-/**
- * Extract notes assessment from AI response
- */
-function extractNotesAssessment(summary) {
-  const match = summary.match(/## CREATOR SELF-ASSESSMENT CHECK[\s\S]*?((?:Accurate|Partially Accurate|Delusional|Needs Recalibration)[^\n]*)/i);
-  return match ? match[1].trim() : null;
-}
-
-/**
- * Extract marketing insights from AI response
- */
-function extractMarketingInsights(summary) {
-  const match = summary.match(/\*\*MARKETING_INSIGHTS_START\*\*([\s\S]*?)\*\*MARKETING_INSIGHTS_END\*\*/i);
-  if (match) {
-    return match[1].trim();
-  }
-  // Fallback: try to find the Marketing Analysis section
-  const fallback = summary.match(/## MARKETING ANALYSIS([\s\S]*?)(?=---|\*\*Overall Score|## VIDEO SCORE|## CREATOR|$)/i);
-  return fallback ? fallback[1].trim() : null;
-}
-
-/**
- * Extract competitor analysis from AI response
- */
-function extractCompetitorAnalysis(summary) {
-  const match = summary.match(/\*\*COMPETITOR_ANALYSIS_START\*\*([\s\S]*?)\*\*COMPETITOR_ANALYSIS_END\*\*/i);
-  if (match) {
-    return match[1].trim();
-  }
-  // Fallback: try to find the Competitor Intelligence section
-  const fallback = summary.match(/## COMPETITOR INTELLIGENCE ANALYSIS([\s\S]*?)(?=---|\*\*Overall Score|## VIDEO SCORE|$)/i);
-  return fallback ? fallback[1].trim() : null;
-}
-
-/**
- * Extract score breakdown from AI response
- */
-function extractScoreBreakdown(summary) {
-  const match = summary.match(/\*\*SCORE_BREAKDOWN_START\*\*([\s\S]*?)\*\*SCORE_BREAKDOWN_END\*\*/i);
-  if (!match) return null;
-
-  const text = match[1];
-  const breakdown = {
-    engagement: { score: 0, max: 40, reason: '' },
-    contentFit: { score: 0, max: 30, reason: '' },
-    conversion: { score: 0, max: 20, reason: '' },
-    redFlags: { score: 0, max: 10, reason: '' },
-  };
-
-  // Extract Engagement
-  const engMatch = text.match(/Engagement:\s*(\d+)\/40\s*-?\s*(.+)/i);
-  if (engMatch) {
-    breakdown.engagement.score = parseInt(engMatch[1], 10);
-    breakdown.engagement.reason = engMatch[2].trim();
-  }
-
-  // Extract Content Fit
-  const fitMatch = text.match(/Content Fit:\s*(\d+)\/30\s*-?\s*(.+)/i);
-  if (fitMatch) {
-    breakdown.contentFit.score = parseInt(fitMatch[1], 10);
-    breakdown.contentFit.reason = fitMatch[2].trim();
-  }
-
-  // Extract Conversion
-  const convMatch = text.match(/Conversion:\s*(\d+)\/20\s*-?\s*(.+)/i);
-  if (convMatch) {
-    breakdown.conversion.score = parseInt(convMatch[1], 10);
-    breakdown.conversion.reason = convMatch[2].trim();
-  }
-
-  // Extract Red Flags
-  const flagMatch = text.match(/Red Flags:\s*-?(\d+)\/10\s*-?\s*(.+)/i);
-  if (flagMatch) {
-    breakdown.redFlags.score = parseInt(flagMatch[1], 10);
-    breakdown.redFlags.reason = flagMatch[2].trim();
-  }
-
-  return breakdown;
-}
-
-/**
- * Extract action items from AI response
- */
-function extractActionItems(summary) {
-  const items = [];
-
-  // Look for action items section first
-  const actionMatch = summary.match(/\*\*ACTION_ITEMS_START\*\*([\s\S]*?)\*\*ACTION_ITEMS_END\*\*/i);
-  if (actionMatch) {
-    const actionText = actionMatch[1];
-    // Parse numbered items
-    const itemMatches = actionText.matchAll(/\d+\.\s*\*\*([^*]+)\*\*:?\s*([^\n]+)?/g);
-    for (const match of itemMatches) {
-      items.push({
-        id: `action_${items.length + 1}`,
-        title: match[1].trim(),
-        description: match[2]?.trim() || '',
-        completed: false,
-        priority: items.length < 3 ? 'high' : 'medium',
-      });
-    }
-    if (items.length > 0) return items;
-  }
-
-  // Fallback: Extract from "Impact-Ranked Recommendations" section
-  const recsMatch = summary.match(/## Impact-Ranked Recommendations([\s\S]*?)(?=##|---|\*\*Overall Score|$)/i);
-  if (recsMatch) {
-    const recsText = recsMatch[1];
-    const recItems = recsText.matchAll(/\d+\.\s*(?:\*\*)?(?:What to change:?\s*)?([^*\n]+)(?:\*\*)?/gi);
-    for (const match of recItems) {
-      const title = match[1].trim().replace(/^\*\*|\*\*$/g, '');
-      if (title.length > 10 && title.length < 200) {
-        items.push({
-          id: `action_${items.length + 1}`,
-          title,
-          description: '',
-          completed: false,
-          priority: items.length < 3 ? 'high' : 'medium',
-        });
-      }
-    }
-  }
-
-  // Also try to extract from bullet points with action verbs
-  if (items.length < 3) {
-    const actionVerbs = /^[-*]\s*(Add|Create|Update|Fix|Improve|Change|Remove|Implement|Test|Review|Optimize|Refactor|Include|Consider)\s+/gim;
-    const bulletMatches = summary.matchAll(actionVerbs);
-    for (const match of bulletMatches) {
-      const lineEnd = summary.indexOf('\n', match.index);
-      const line = summary.substring(match.index + 2, lineEnd > 0 ? lineEnd : match.index + 100).trim();
-      if (line.length > 10 && line.length < 200 && !items.some(i => i.title === line)) {
-        items.push({
-          id: `action_${items.length + 1}`,
-          title: line,
-          description: '',
-          completed: false,
-          priority: 'medium',
-        });
-      }
-      if (items.length >= 10) break;
-    }
-  }
-
-  return items.slice(0, 10);
 }
 
 /**
@@ -402,9 +245,8 @@ Rank the top 3-5 changes by potential impact (not just frequency). For each:
 
 Product Description: "${marketingContext.description}"
 
-Based on the comments AND the product image provided, analyze:
+Based on the comments AND the product image provided, populate marketingInsights with:
 
-**MARKETING_INSIGHTS_START**
 ### Perception vs Positioning
 [How audience perceives the product vs intended positioning]
 
@@ -416,7 +258,6 @@ Based on the comments AND the product image provided, analyze:
 
 ### Creative Tests
 [Testable creative adjustments with expected outcomes]
-**MARKETING_INSIGHTS_END**
 
 **Important:** Image insights are hypotheses only. Comment evidence takes precedence.`;
   }
@@ -444,20 +285,8 @@ Score based on comment evidence:
 - 25-39: Poor - Significant negative feedback, audience mismatch, complaints
 - 0-24: Critical - Overwhelmingly negative, misleading content, audience rejection
 
-**REQUIRED OUTPUT FORMAT (at END of analysis):**
-
-**SCORE_BREAKDOWN_START**
-- Engagement: [0-40]/40 - [brief reason]
-- Content Fit: [0-30]/30 - [brief reason]
-- Conversion: [0-20]/20 - [brief reason]
-- Red Flags: -[0-10]/10 - [brief reason]
-**SCORE_BREAKDOWN_END**
-
-**Overall Score: [YOUR CALCULATED NUMBER]/100**
-
-**Priority Improvement:** [The single most impactful change based on comment evidence]
-
-[2-3 sentences explaining WHY this specific score, citing specific comment patterns or quotes]`;
+Populate videoScore, scoreBreakdown, and priorityImprovement. Give each category a brief evidence-led reason.
+The server will recompute the overall score from the category scores.`;
   }
 
   // Add notes reality check if creator provided notes
@@ -493,9 +322,7 @@ ${directnessNote}`;
 ---
 ## COMPETITOR INTELLIGENCE ANALYSIS
 
-You are analyzing a COMPETITOR'S video. The goal is to extract actionable intelligence that can be used against them.
-
-**COMPETITOR_ANALYSIS_START**
+You are analyzing a COMPETITOR'S video. Populate competitorAnalysis with actionable, ethical intelligence.
 
 ### What Makes This Work
 Identify 3-5 specific tactics this competitor uses that clearly resonate with their audience:
@@ -529,9 +356,7 @@ Based on who's commenting, describe this competitor's audience:
 How to compete directly with this content:
 - Differentiation opportunities
 - Underserved segments of their audience
-- Better ways to deliver similar value
-
-**COMPETITOR_ANALYSIS_END**`;
+- Better ways to deliver similar value`;
 
     if (competitorNotes && competitorNotes.trim()) {
       prompt += `
@@ -543,20 +368,17 @@ Make sure to directly address this question with specific evidence from the comm
     }
   }
 
-  // Build messages array — use multimodal content if we have images
+  // Build Responses API input — use multimodal content if we have images.
   const hasImages = !!(videoFrames?.length > 0) || !!(marketingContext?.image_base64);
-  const messages = [];
-  const userContent = [{ type: 'text', text: prompt }];
+  const userContent = [{ type: 'input_text', text: prompt }];
 
   if (marketingContext?.image_base64) {
     const mimeType = detectImageMimeType(marketingContext.image_base64);
     console.log(`[AI] Product image MIME type detected: ${mimeType}`);
     userContent.push({
-      type: 'image_url',
-      image_url: {
-        url: `data:${mimeType};base64,${marketingContext.image_base64}`,
-        detail: 'auto',
-      },
+      type: 'input_image',
+      image_url: `data:${mimeType};base64,${marketingContext.image_base64}`,
+      detail: 'auto',
     });
   }
 
@@ -568,56 +390,51 @@ Make sure to directly address this question with specific evidence from the comm
     if (selectedFrames.length > 0) {
       console.log(`[AI] Adding ${selectedFrames.length} video frames to analysis`);
       userContent.push({
-        type: 'text',
+        type: 'input_text',
         text: `\n\n[The following ${selectedFrames.length} images are frames extracted from the creator's video. Use them to understand the visual content and production quality:]`,
       });
       for (const frame of selectedFrames) {
         const mimeType = detectImageMimeType(frame);
         userContent.push({
-          type: 'image_url',
-          image_url: {
-            url: `data:${mimeType};base64,${frame}`,
-            detail: 'low', // Use low detail for frames to reduce tokens
-          },
+          type: 'input_image',
+          image_url: `data:${mimeType};base64,${frame}`,
+          detail: 'low',
         });
       }
     }
   }
 
-  if (hasImages) {
-    messages.push({ role: 'user', content: userContent });
-  } else {
-    messages.push({ role: 'user', content: prompt });
-  }
+  const model = getAIModel();
+  const input = [
+    {
+      role: 'developer',
+      content: [{
+        type: 'input_text',
+        text: 'Analyze only the supplied evidence. Never invent comment quotes or metrics. Put mode-specific fields at null when they do not apply. Return 3-7 concrete action items.',
+      }],
+    },
+    { role: 'user', content: hasImages ? userContent : [{ type: 'input_text', text: prompt }] },
+  ];
 
-  // Choose model — gpt-4o for vision, gpt-4o-mini for text-only
-  const model = hasImages ? 'gpt-4o' : 'gpt-4o-mini';
-  const maxTokens = hasImages ? 3000 : 2000;
-
-  console.log(`[AI] Sending request to OpenAI (model: ${model}). Prompt length: ${prompt.length} chars`);
+  console.log(`[AI] Sending structured request (model: ${model}). Prompt length: ${prompt.length} chars`);
   try {
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAIClient().responses.parse({
       model,
-      messages,
-      temperature: 0.3,
-      max_tokens: maxTokens,
+      input,
+      max_output_tokens: hasImages ? 5000 : 3500,
+      text: {
+        format: zodTextFormat(CommentAnalysisSchema, 'comment_analysis'),
+      },
     }, {
       timeout: 300000,
     });
 
-    console.log('[AI] Received response from OpenAI');
-    const summary = response.choices[0].message.content;
-
-    // Log score section if this is a "my video" analysis
-    if (isMyVideo) {
-      console.log('[AI] My Video analysis - looking for score section...');
-      const scoreSection = summary.match(/VIDEO SCORE[\s\S]*$/i);
-      if (scoreSection) {
-        console.log('[AI] Score section found:', scoreSection[0].slice(0, 300));
-      } else {
-        console.log('[AI] No VIDEO SCORE section found. Last 500 chars:', summary.slice(-500));
-      }
+    const analysis = response.output_parsed;
+    if (!analysis) {
+      throw new Error('The model returned no structured analysis');
     }
+
+    console.log('[AI] Received and validated structured response');
 
     let footer = `
 
@@ -632,36 +449,23 @@ Make sure to directly address this question with specific evidence from the comm
       footer += `\n  - Video Enrichment: ${videoTranscript ? 'Transcript included' : 'No transcript'}${videoFrames ? `, ${videoFrames.length} frames analyzed` : ''}`;
     }
 
-    // Extract scoring data if this is a "my video" analysis
-    const videoScore = isMyVideo ? extractVideoScore(summary) : null;
-    const priorityImprovement = isMyVideo ? extractPriorityImprovement(summary) : null;
-    const scoreBreakdown = isMyVideo ? extractScoreBreakdown(summary) : null;
-    const notesAssessment = creatorNotes ? extractNotesAssessment(summary) : null;
-    const marketingInsights = marketingContext ? extractMarketingInsights(summary) : null;
-    const competitorAnalysis = isCompetitor ? extractCompetitorAnalysis(summary) : null;
-    const actionItems = extractActionItems(summary);
-
-    console.log('[OpenAI] Scoring extraction - isMyVideo:', isMyVideo, 'videoScore:', videoScore, 'priorityImprovement:', priorityImprovement ? 'found' : 'null', 'scoreBreakdown:', scoreBreakdown ? 'found' : 'null');
-    if (marketingInsights) {
-      console.log('[OpenAI] Marketing insights extracted:', marketingInsights.slice(0, 100) + '...');
-    }
-    if (competitorAnalysis) {
-      console.log('[OpenAI] Competitor analysis extracted:', competitorAnalysis.slice(0, 100) + '...');
-    }
-    if (actionItems.length > 0) {
-      console.log('[OpenAI] Action items extracted:', actionItems.length);
-    }
-
-    // Clean summary by removing internal markers before returning
-    let cleanedSummary = summary
-      .replace(/\*\*SCORE_BREAKDOWN_START\*\*[\s\S]*?\*\*SCORE_BREAKDOWN_END\*\*/gi, '')
-      .replace(/\*\*ACTION_ITEMS_START\*\*[\s\S]*?\*\*ACTION_ITEMS_END\*\*/gi, '')
-      .replace(/\*\*COMPETITOR_ANALYSIS_START\*\*[\s\S]*?\*\*COMPETITOR_ANALYSIS_END\*\*/gi, '')
-      .replace(/\n{3,}/g, '\n\n') // Clean up extra newlines left behind
-      .trim();
+    const actionItems = analysis.actionItems.map((item, index) => ({
+      id: `action_${index + 1}`,
+      ...item,
+      completed: false,
+    }));
+    const scoreBreakdown = isMyVideo ? analysis.scoreBreakdown : null;
+    const calculatedVideoScore = scoreBreakdown
+      ? Math.max(0, Math.min(100,
+        scoreBreakdown.engagement.score
+        + scoreBreakdown.contentFit.score
+        + scoreBreakdown.conversion.score
+        - scoreBreakdown.redFlags.score
+      ))
+      : analysis.videoScore;
 
     return {
-      summary: cleanedSummary + footer,
+      summary: analysis.summary.trim() + footer,
       keywords,
       themes,
       stats: {
@@ -671,37 +475,22 @@ Make sure to directly address this question with specific evidence from the comm
         coverage: coveragePct,
         sampled: needsSampling,
       },
-      videoScore,
-      priorityImprovement,
+      videoScore: isMyVideo ? calculatedVideoScore : null,
+      priorityImprovement: isMyVideo ? analysis.priorityImprovement : null,
       scoreBreakdown,
-      notesAssessment,
-      marketingInsights,
-      competitorAnalysis,
+      notesAssessment: creatorNotes ? analysis.notesAssessment : null,
+      marketingInsights: marketingContext ? analysis.marketingInsights : null,
+      competitorAnalysis: isCompetitor ? analysis.competitorAnalysis : null,
       actionItems,
     };
 
   } catch (aiError) {
-    console.error('[AI] Analysis failed:', aiError);
-
-    return {
-      summary: `**AI Analysis Unavailable:** ${aiError.message}\n\nKeywords and themes were still extracted from ${size} comments.`,
-      keywords,
-      themes,
-      stats: {
-        total: comments.length,
-        filtered: analysisComments.length,
-        analyzed: size,
-        coverage: coveragePct,
-        sampled: needsSampling,
-      },
-      videoScore: null,
-      priorityImprovement: null,
-      scoreBreakdown: null,
-      notesAssessment: null,
-      marketingInsights: null,
-      competitorAnalysis: null,
-      actionItems: [],
-    };
+    const safeError = new Error('The LLM analysis could not be completed');
+    if (aiError?.status === 401) safeError.code = 'AI_AUTH_FAILED';
+    else if (aiError?.status === 429) safeError.code = 'AI_RATE_LIMITED';
+    else safeError.code = aiError?.code || 'AI_ANALYSIS_FAILED';
+    console.error(`[AI] Analysis failed (${safeError.code})`);
+    throw safeError;
   }
 }
 

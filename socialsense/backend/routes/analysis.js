@@ -31,13 +31,14 @@ import { processComments, extractThemesAndKeywords } from '../services/commentPr
 import { analyzeComments, transcribeAudio } from '../services/openai.js';
 import { aggregateSentiment } from '../services/sentiment.js';
 import { validateEngagement } from '../services/engagementValidator.js';
+import { isAIConfigured } from '../services/aiClient.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const router = express.Router();
 
-// AI features are only active when AI_ENABLED=true is set in the environment
-const AI_ENABLED = process.env.AI_ENABLED === 'true';
-if (!AI_ENABLED) console.log('ℹ️  AI features disabled (set AI_ENABLED=true to enable)');
+// AI is enabled whenever a key exists, unless explicitly disabled.
+const AI_ENABLED = process.env.AI_ENABLED !== 'false' && isAIConfigured();
+if (!AI_ENABLED) console.log('AI features disabled (add OPENAI_API_KEY and ensure AI_ENABLED is not false)');
 
 /**
  * Helper to safely delete temp files with proper logging
@@ -1078,11 +1079,15 @@ async function processAnalysisJob({
         analysisResult = await analyzeComments(processedComments, platform, marketingContext, videoTranscript, videoFrames, isMyVideo, creatorNotes, isCompetitor, competitorNotes, harshFeedback);
       } catch (aiErr) {
         console.error('AI Error:', aiErr);
+        const aiRefund = TOKEN_COSTS.text_analysis
+          + (includeMkt ? TOKEN_COSTS.marketing_analysis : 0);
+        await refundTokens(userId, analysisId, aiRefund,
+          `Refund: LLM analysis failed (${aiErr.code || 'AI_ANALYSIS_FAILED'})`);
         const fallback = extractThemesAndKeywords(processedComments.map(c => c.clean_text));
         analysisResult = {
           ...fallback,
           stats: { total: rawComments.length, analyzed: 0, coverage: 0 },
-          summary: `**AI Analysis Failed:** ${aiErr.message}\n\nKeywords extracted successfully.`
+          summary: '**LLM analysis unavailable.** Keywords and themes were still extracted locally.'
         };
       }
     } else {
@@ -1107,7 +1112,7 @@ async function processAnalysisJob({
         engagementResult = {
           authenticityScore: null,
           verdict: 'Analysis Error',
-          engagementAssessment: `Validation failed: ${engErr.message}`,
+          engagementAssessment: 'Engagement validation could not be completed. Please try again.',
           redFlags: [],
           positiveSignals: [],
           recommendations: ['Please try again.'],

@@ -11,8 +11,9 @@ import { extractTikTokVideoId, getTikTokCommentCount, scrapeTikTokComments } fro
 import { processComments, extractThemesAndKeywords } from './commentProcessor.js';
 import { analyzeComments } from './openai.js';
 import { aggregateSentiment } from './sentiment.js';
+import { isAIConfigured } from './aiClient.js';
 
-const AI_ENABLED = process.env.AI_ENABLED === 'true';
+const AI_ENABLED = process.env.AI_ENABLED !== 'false' && isAIConfigured();
 
 // Track if scheduler is running to prevent overlap
 let isProcessing = false;
@@ -255,7 +256,7 @@ async function processScheduledAnalysisJob({
         analysisResult = {
           ...fallback,
           stats: { total: rawComments.length, analyzed: 0, coverage: 0 },
-          summary: `**AI Analysis Failed:** ${aiErr.message}\n\nKeywords extracted successfully.`
+          summary: '**LLM analysis unavailable.** Keywords and themes were still extracted locally.'
         };
       }
     } else {

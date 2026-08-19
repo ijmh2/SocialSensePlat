@@ -1,452 +1,289 @@
-import React, { useState } from 'react';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
+  Alert,
   Box,
-  Container,
-  Typography,
   Button,
-  Grid,
   Card,
   CardContent,
   Chip,
-  Tabs,
-  Tab,
-  useTheme,
-  alpha,
+  CircularProgress,
+  Container,
   Divider,
+  Grid,
+  MenuItem,
+  TextField,
+  Typography,
+  alpha,
+  useTheme,
 } from '@mui/material';
 import {
-  YouTube,
-  ArrowForward,
   ArrowBack,
-  Download,
-  FilterAlt,
+  AutoAwesome,
   CheckCircle,
-  Cancel,
-  RemoveCircle,
+  Forum,
+  Insights,
+  Psychology,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
-import { shadows } from '../styles/theme';
+import ReactMarkdown from 'react-markdown';
+import { demoApi } from '../utils/api';
+import ScoreBreakdown from '../components/ScoreBreakdown';
 
 const MotionBox = motion(Box);
 
-// ─── Mock data ───────────────────────────────────────────────────────────────
+const EXAMPLE_COMMENTS = [
+  'Love the quality. I have used it every day for three months and it still looks new.',
+  'When will the blue version be back in stock? I have checked twice this week.',
+  'Shipping took twelve days and the box arrived damaged, although the product works.',
+  'The opening was useful but the middle repeated the same point for too long.',
+  'Can you compare this with the cheaper version in your next video?',
+  'Bought one after watching this. The size guide made the decision easy.',
+  'The price feels high now. What makes this different from the older model?',
+  'I shared this with my team because the setup explanation was genuinely clear.',
+  'Please add captions. I could not follow the technical section without them.',
+  'The real-world example at 4:20 was the best part—more of that next time.',
+].join('\n');
 
-const MOCK_KEYWORDS = [
-  { word: 'quality', count: 312 },
-  { word: 'shipping', count: 241 },
-  { word: 'packaging', count: 187 },
-  { word: 'price', count: 164 },
-  { word: 'restock', count: 143 },
-  { word: 'colour', count: 128 },
-  { word: 'recommend', count: 97 },
-  { word: 'material', count: 84 },
-  { word: 'sizing', count: 76 },
-  { word: 'fast', count: 63 },
-  { word: 'worth', count: 58 },
-  { word: 'love', count: 54 },
-  { word: 'durable', count: 47 },
-  { word: 'beautiful', count: 41 },
-  { word: 'lightweight', count: 38 },
-];
-
-const MOCK_THEMES = [
-  { theme: 'great quality', count: 198 },
-  { theme: 'fast shipping', count: 156 },
-  { theme: 'good packaging', count: 112 },
-  { theme: 'worth the price', count: 89 },
-  { theme: 'love the colour', count: 76 },
-  { theme: 'restock blue version', count: 67 },
-  { theme: 'highly recommend', count: 54 },
-  { theme: 'well made', count: 43 },
-];
-
-const MOCK_COMMENTS = [
-  { text: "Love the quality of this, been using it for 3 months now and it still looks brand new. Definitely worth the price.", sentiment: 'positive', likes: 142, author: 'sarah_m' },
-  { text: "When will you restock the blue version? I've been waiting for weeks and keep checking back.", sentiment: 'neutral', likes: 89, author: 'techreview99' },
-  { text: "Shipping took way longer than expected and the packaging was a bit damaged when it arrived. Product itself is fine though.", sentiment: 'negative', likes: 67, author: 'honest_buyer' },
-  { text: "Absolutely obsessed with this. Bought one for myself and one as a gift - both were perfect.", sentiment: 'positive', likes: 203, author: 'gifting_queen' },
-  { text: "Is this available in a larger size? The medium is slightly too small for me.", sentiment: 'neutral', likes: 34, author: 'user_82' },
-  { text: "Third time ordering and the quality just keeps getting better. You guys have really nailed the material.", sentiment: 'positive', likes: 178, author: 'loyal_customer' },
-  { text: "Not sure how I feel about the new colour options, prefer the original range personally.", sentiment: 'neutral', likes: 21, author: 'vintage_fan' },
-  { text: "Received the wrong item and customer service was slow to respond. Bit disappointed honestly.", sentiment: 'negative', likes: 45, author: 'disappointed_buyer' },
-  { text: "Lightweight and durable - exactly what I needed. Using it every day at work.", sentiment: 'positive', likes: 94, author: 'office_worker' },
-  { text: "Price went up since I last bought. Still good quality but the value isn't what it was.", sentiment: 'neutral', likes: 57, author: 'price_watcher' },
-];
-
-const SENTIMENT_POSITIVE = 2841;
-const SENTIMENT_NEUTRAL  = 1104;
-const SENTIMENT_NEGATIVE  = 512;
-const SENTIMENT_TOTAL = SENTIMENT_POSITIVE + SENTIMENT_NEUTRAL + SENTIMENT_NEGATIVE;
-
-const FILTER_STATS = {
-  original: 6200,
-  after_hard_filters: 4457,
-  emoji_only: 412,
-  spam_promo: 287,
-  duplicates: 1044,
-  generic_praise: 198,
-  off_topic: 87,
-};
-
-const CHIP_COLORS = ['#1E40AF', '#0891B2', '#16A34A', '#D97706', '#7C3AED', '#DB2777', '#14B8A6', '#F59E0B', '#8B5CF6'];
-
-// ─── Component ───────────────────────────────────────────────────────────────
-
-const Demo = () => {
-  const theme = useTheme();
-  const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState(0);
-
-  const sentimentColor = (s) => {
-    if (s === 'positive') return theme.palette.success.main;
-    if (s === 'negative') return theme.palette.error.main;
-    return theme.palette.grey[400];
-  };
-
-  const sentimentIcon = (s) => {
-    if (s === 'positive') return <CheckCircle sx={{ fontSize: 14, color: theme.palette.success.main }} />;
-    if (s === 'negative') return <Cancel sx={{ fontSize: 14, color: theme.palette.error.main }} />;
-    return <RemoveCircle sx={{ fontSize: 14, color: theme.palette.grey[400] }} />;
-  };
+function SentimentCard({ sentiment }) {
+  const values = [
+    ['Positive', sentiment?.positive || 0, '#16A34A'],
+    ['Neutral', sentiment?.neutral || 0, '#64748B'],
+    ['Negative', sentiment?.negative || 0, '#DC2626'],
+  ];
+  const total = values.reduce((sum, [, value]) => sum + value, 0) || 1;
 
   return (
-    <Box sx={{ minHeight: '100vh', background: '#F8FAFF' }}>
-      {/* Demo banner */}
-      <Box sx={{
-        background: theme.palette.primary.main,
-        py: 1.25, px: 2,
-        textAlign: 'center',
-        position: 'sticky', top: 0, zIndex: 200,
-      }}>
-        <Typography variant="body2" sx={{ color: 'white', fontWeight: 500 }}>
-          This is a live preview with sample data.{' '}
-          <Typography
-            component={RouterLink}
-            to="/signup"
-            variant="body2"
-            sx={{ color: 'rgba(255,255,255,0.85)', fontWeight: 700, textDecoration: 'underline' }}
-          >
-            Sign up free
-          </Typography>
-          {' '}to analyse your own videos.
+    <Card sx={{ height: '100%' }}>
+      <CardContent sx={{ p: 3 }}>
+        <Typography variant="overline" color="text.secondary" fontWeight={700}>
+          Rule-based baseline
         </Typography>
-      </Box>
-
-      {/* Mini nav */}
-      <Box sx={{
-        background: 'rgba(248,250,255,0.9)', backdropFilter: 'blur(12px)',
-        borderBottom: `1px solid ${alpha(theme.palette.primary.main, 0.08)}`,
-        px: { xs: 2, sm: 4 }, py: 1.5,
-        display: 'flex', alignItems: 'center', gap: 2,
-      }}>
-        <Button
-          startIcon={<ArrowBack />}
-          variant="text"
-          size="small"
-          onClick={() => navigate('/')}
-          sx={{ color: theme.palette.text.secondary }}
-        >
-          Back
-        </Button>
-        <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
-          CommentIQ &rsaquo; Example Analysis
+        <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
+          Sentiment mix
         </Typography>
-        <Box sx={{ flex: 1 }} />
-        <Button
-          variant="contained"
-          size="small"
-          endIcon={<ArrowForward />}
-          onClick={() => navigate('/signup')}
-        >
-          Try with your video
-        </Button>
-      </Box>
-
-      <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
-
-        {/* Analysis header */}
-        <MotionBox initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 4, flexWrap: 'wrap' }}>
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 0.5 }}>
-                <YouTube sx={{ color: '#FF0000', fontSize: 22 }} />
-                <Typography variant="h5" fontWeight={700} noWrap>
-                  My New Product Launch - Full Review & Unboxing
-                </Typography>
-                <Chip label="completed" size="small" sx={{
-                  background: alpha(theme.palette.success.main, 0.1),
-                  color: theme.palette.success.main, fontWeight: 600,
-                }} />
-                <Chip label="My Video" size="small" sx={{
-                  background: alpha(theme.palette.primary.main, 0.08),
-                  color: theme.palette.primary.main, fontWeight: 600,
-                }} />
-              </Box>
-              <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
-                12 Jul 2026 · 57 tokens used
+        <Box sx={{ display: 'flex', height: 9, borderRadius: 99, overflow: 'hidden', mb: 2 }}>
+          {values.map(([label, value, color]) => (
+            <Box key={label} sx={{ width: `${(value / total) * 100}%`, background: color }} />
+          ))}
+        </Box>
+        <Box sx={{ display: 'flex', gap: 3 }}>
+          {values.map(([label, value, color]) => (
+            <Box key={label}>
+              <Typography variant="h6" fontWeight={800} sx={{ color }}>
+                {Math.round((value / total) * 100)}%
               </Typography>
+              <Typography variant="caption" color="text.secondary">{label}</Typography>
             </Box>
-            <Button variant="outlined" size="small" startIcon={<Download />} disabled>
-              CSV
+          ))}
+        </Box>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function Demo() {
+  const theme = useTheme();
+  const navigate = useNavigate();
+  const [comments, setComments] = useState(EXAMPLE_COMMENTS);
+  const [platform, setPlatform] = useState('youtube');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [data, setData] = useState(null);
+
+  const commentCount = useMemo(
+    () => comments.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).length,
+    [comments]
+  );
+
+  const handleAnalyze = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await demoApi.analyze(comments, platform);
+      setData(response.data);
+    } catch (requestError) {
+      setData(null);
+      setError(
+        requestError.response?.data?.error
+        || requestError.message
+        || 'The analysis could not be completed.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const result = data?.result;
+
+  return (
+    <Box sx={{ minHeight: '100vh', background: '#F8FAFF', pb: 10 }}>
+      <Box sx={{
+        position: 'sticky', top: 0, zIndex: 100,
+        background: 'rgba(248,250,255,0.92)', backdropFilter: 'blur(16px)',
+        borderBottom: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+      }}>
+        <Container maxWidth="lg">
+          <Box sx={{ py: 1.5, display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Button startIcon={<ArrowBack />} onClick={() => navigate('/')} color="inherit">
+              Back
             </Button>
+            <Divider orientation="vertical" flexItem />
+            <AutoAwesome sx={{ color: theme.palette.primary.main }} />
+            <Typography fontWeight={800}>CommentIQ LLM Lab</Typography>
+            <Chip label="Live" size="small" color="success" variant="outlined" />
           </Box>
+        </Container>
+      </Box>
 
-          {/* Stats strip */}
-          <Box sx={{
-            display: 'flex', mb: 4,
-            background: 'white',
-            border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-            borderRadius: '16px', overflow: 'hidden',
-          }}>
-            {[
-              { label: 'Comments fetched', value: '6,200', color: theme.palette.primary.main },
-              { label: 'After filtering', value: '4,457', color: theme.palette.info.main },
-              { label: 'Keywords', value: MOCK_KEYWORDS.length, color: theme.palette.success.main },
-              { label: 'Themes', value: MOCK_THEMES.length, color: theme.palette.warning.main },
-            ].map((s, i, arr) => (
-              <Box key={s.label} sx={{
-                flex: 1, p: { xs: 2, sm: 3 }, textAlign: 'center',
-                borderRight: i < arr.length - 1 ? `1px solid ${alpha(theme.palette.primary.main, 0.08)}` : 'none',
-              }}>
-                <Typography sx={{ fontSize: { xs: '1.5rem', sm: '2rem' }, fontWeight: 800, color: s.color, lineHeight: 1, mb: 0.5 }}>
-                  {s.value}
-                </Typography>
-                <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 500 }}>
-                  {s.label}
-                </Typography>
-              </Box>
-            ))}
-          </Box>
-
-          {/* Sentiment bar */}
-          <Box sx={{
-            mb: 4, p: 3,
-            background: 'white',
-            border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-            borderRadius: '16px',
-          }}>
-            <Typography variant="body2" fontWeight={700} sx={{
-              color: theme.palette.text.secondary, textTransform: 'uppercase', letterSpacing: 0.8, mb: 2,
-            }}>
-              Sentiment breakdown
-            </Typography>
-            <Box sx={{ display: 'flex', height: 10, borderRadius: '99px', overflow: 'hidden', gap: '2px', mb: 2 }}>
-              <Box sx={{ flex: SENTIMENT_POSITIVE, background: theme.palette.success.main }} />
-              <Box sx={{ flex: SENTIMENT_NEUTRAL, background: theme.palette.grey[300] }} />
-              <Box sx={{ flex: SENTIMENT_NEGATIVE, background: theme.palette.error.main }} />
-            </Box>
-            <Box sx={{ display: 'flex', gap: { xs: 3, sm: 5 } }}>
-              {[
-                [SENTIMENT_POSITIVE, 'Positive', theme.palette.success.main],
-                [SENTIMENT_NEUTRAL, 'Neutral', theme.palette.grey[500]],
-                [SENTIMENT_NEGATIVE, 'Negative', theme.palette.error.main],
-              ].map(([count, label, color]) => (
-                <Box key={label}>
-                  <Typography variant="h5" fontWeight={800} sx={{ color, lineHeight: 1 }}>
-                    {Math.round((count / SENTIMENT_TOTAL) * 100)}%
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 500 }}>
-                    {label} · {count.toLocaleString()}
-                  </Typography>
-                </Box>
-              ))}
-            </Box>
-          </Box>
-
-          {/* Tabs */}
-          <Card sx={{ mb: 3 }}>
-            <Tabs
-              value={activeTab}
-              onChange={(_, v) => setActiveTab(v)}
-              sx={{ borderBottom: 1, borderColor: 'divider' }}
-            >
-              <Tab label="Keywords & Themes" />
-              <Tab label="Comments" />
-              <Tab label="Filter Stats" />
-            </Tabs>
-          </Card>
-
-          {/* Tab 0 — Keywords & Themes */}
-          {activeTab === 0 && (
-            <MotionBox initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={7}>
-                  <Card>
-                    <CardContent>
-                      <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>Top Keywords</Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
-                        {MOCK_KEYWORDS.map((k, i) => (
-                          <Chip
-                            key={k.word}
-                            label={`${k.word} · ${k.count}`}
-                            size={i < 5 ? 'medium' : 'small'}
-                            sx={{
-                              background: alpha(CHIP_COLORS[i % CHIP_COLORS.length], i < 5 ? 0.12 : 0.08),
-                              color: CHIP_COLORS[i % CHIP_COLORS.length],
-                              fontWeight: i < 5 ? 700 : 500,
-                              fontSize: i < 3 ? '0.85rem' : '0.75rem',
-                              border: `1px solid ${alpha(CHIP_COLORS[i % CHIP_COLORS.length], 0.2)}`,
-                            }}
-                          />
-                        ))}
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid item xs={12} md={5}>
-                  <Card sx={{ height: '100%' }}>
-                    <CardContent>
-                      <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>Recurring Themes</Typography>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                        {MOCK_THEMES.map((t, i) => (
-                          <Box key={t.theme}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                              <Typography variant="body2" fontWeight={500} sx={{ textTransform: 'capitalize' }}>
-                                {t.theme}
-                              </Typography>
-                              <Typography variant="caption" sx={{ color: theme.palette.text.secondary }}>
-                                {t.count}
-                              </Typography>
-                            </Box>
-                            <Box sx={{ height: 4, borderRadius: '99px', background: alpha(theme.palette.primary.main, 0.08) }}>
-                              <Box sx={{
-                                height: '100%', borderRadius: '99px',
-                                width: `${(t.count / MOCK_THEMES[0].count) * 100}%`,
-                                background: CHIP_COLORS[i % CHIP_COLORS.length],
-                                transition: 'width 600ms ease',
-                              }} />
-                            </Box>
-                          </Box>
-                        ))}
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              </Grid>
-            </MotionBox>
-          )}
-
-          {/* Tab 1 — Comments */}
-          {activeTab === 1 && (
-            <MotionBox initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-              <Card>
-                <CardContent>
-                  <Box sx={{ display: 'flex', gap: 1, mb: 3, flexWrap: 'wrap' }}>
-                    {[
-                      ['All', theme.palette.primary.main],
-                      ['Positive', theme.palette.success.main],
-                      ['Neutral', theme.palette.grey[500]],
-                      ['Negative', theme.palette.error.main],
-                    ].map(([label, color], i) => (
-                      <Chip
-                        key={label}
-                        label={label}
-                        size="small"
-                        variant={i === 0 ? 'filled' : 'outlined'}
-                        sx={i === 0 ? {
-                          background: alpha(color, 0.12), color, fontWeight: 600, border: `1px solid ${alpha(color, 0.3)}`,
-                        } : {
-                          color, borderColor: alpha(color, 0.3), fontWeight: 500,
-                        }}
-                      />
-                    ))}
-                  </Box>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                    {MOCK_COMMENTS.map((c) => (
-                      <Box key={c.text} sx={{
-                        p: 2, borderRadius: '12px',
-                        background: alpha(sentimentColor(c.sentiment), 0.04),
-                        border: `1px solid ${alpha(sentimentColor(c.sentiment), 0.15)}`,
-                        display: 'flex', gap: 1.5, alignItems: 'flex-start',
-                      }}>
-                        {sentimentIcon(c.sentiment)}
-                        <Box sx={{ flex: 1, minWidth: 0 }}>
-                          <Typography variant="body2" sx={{ color: theme.palette.text.primary, lineHeight: 1.6 }}>
-                            {c.text}
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: theme.palette.text.secondary }}>
-                            @{c.author}
-                          </Typography>
-                        </Box>
-                        <Typography variant="caption" sx={{ color: theme.palette.text.secondary, flexShrink: 0 }}>
-                          👍 {c.likes}
-                        </Typography>
-                      </Box>
-                    ))}
-                  </Box>
-                  <Typography variant="caption" sx={{ display: 'block', textAlign: 'center', mt: 3, color: theme.palette.text.secondary }}>
-                    Showing 10 of 4,457 filtered comments
-                  </Typography>
-                </CardContent>
-              </Card>
-            </MotionBox>
-          )}
-
-          {/* Tab 2 — Filter Stats */}
-          {activeTab === 2 && (
-            <MotionBox initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" fontWeight={600} sx={{ mb: 3 }}>Comment Filter Breakdown</Typography>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                    {[
-                      { label: 'Original comments fetched', value: FILTER_STATS.original, color: theme.palette.primary.main, bold: true },
-                      { label: 'Emoji-only removed', value: FILTER_STATS.emoji_only, color: theme.palette.error.main },
-                      { label: 'Spam & promotional removed', value: FILTER_STATS.spam_promo, color: theme.palette.error.main },
-                      { label: 'Exact duplicates removed', value: FILTER_STATS.duplicates, color: theme.palette.error.main },
-                      { label: 'After filtering (analyzed)', value: FILTER_STATS.after_hard_filters, color: theme.palette.success.main, bold: true },
-                      { label: 'Generic praise (flagged, kept)', value: FILTER_STATS.generic_praise, color: theme.palette.warning.main },
-                      { label: 'Off-topic noise (flagged, kept)', value: FILTER_STATS.off_topic, color: theme.palette.warning.main },
-                    ].map((row, i, arr) => (
-                      <Box key={row.label}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 1.5 }}>
-                          <Typography variant="body2" fontWeight={row.bold ? 700 : 400} sx={{ color: row.bold ? theme.palette.text.primary : theme.palette.text.secondary }}>
-                            {row.label}
-                          </Typography>
-                          <Typography variant="body2" fontWeight={700} sx={{ color: row.color }}>
-                            {row.value.toLocaleString()}
-                          </Typography>
-                        </Box>
-                        {i < arr.length - 1 && <Divider />}
-                      </Box>
-                    ))}
-                  </Box>
-                </CardContent>
-              </Card>
-            </MotionBox>
-          )}
+      <Container maxWidth="lg" sx={{ pt: { xs: 5, md: 8 } }}>
+        <MotionBox initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+          <Chip icon={<Psychology />} label="Evidence-grounded analysis" color="primary" variant="outlined" sx={{ mb: 2 }} />
+          <Typography variant="h2" sx={{ fontSize: { xs: '2.4rem', md: '3.6rem' }, fontWeight: 850, mb: 2 }}>
+            Turn a comment pile into a decision.
+          </Typography>
+          <Typography sx={{ color: 'text.secondary', fontSize: '1.1rem', maxWidth: 720, mb: 5, lineHeight: 1.7 }}>
+            Paste one comment per line. CommentIQ filters noise, calculates a deterministic sentiment baseline,
+            then asks an LLM for a structured score, evidence-led findings, and an action plan.
+          </Typography>
         </MotionBox>
 
-        {/* Bottom CTA */}
-        <Box sx={{
-          mt: 8, p: { xs: 4, md: 6 }, borderRadius: '20px', textAlign: 'center',
-          background: theme.palette.primary.main,
-          boxShadow: `0 24px 48px ${alpha(theme.palette.primary.main, 0.25)}`,
-        }}>
-          <Typography variant="h4" fontWeight={800} sx={{ color: 'white', mb: 1.5 }}>
-            Ready to analyse your own content?
-          </Typography>
-          <Typography sx={{ color: 'rgba(255,255,255,0.75)', mb: 4 }}>
-            Start with 10 free tokens. No credit card required.
-          </Typography>
-          <Button
-            variant="outlined"
-            size="large"
-            onClick={() => navigate('/signup')}
-            endIcon={<ArrowForward />}
-            sx={{
-              px: 5, py: 1.5, fontSize: '1rem',
-              borderColor: 'rgba(255,255,255,0.5)', color: 'white',
-              '&:hover': { borderColor: 'white', background: 'rgba(255,255,255,0.1)', boxShadow: 'none' },
-            }}
-          >
-            Get started free
-          </Button>
-        </Box>
+        <Grid container spacing={3} alignItems="stretch">
+          <Grid item xs={12} md={7}>
+            <Card sx={{ height: '100%', border: `1px solid ${alpha(theme.palette.primary.main, 0.13)}` }}>
+              <CardContent sx={{ p: { xs: 2.5, md: 4 } }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                  <Box>
+                    <Typography variant="h6" fontWeight={800}>Comments</Typography>
+                    <Typography variant="body2" color="text.secondary">One comment per line · 3–200 comments</Typography>
+                  </Box>
+                  <Chip label={`${commentCount} comments`} size="small" />
+                </Box>
+                <TextField
+                  value={comments}
+                  onChange={(event) => setComments(event.target.value)}
+                  multiline
+                  minRows={12}
+                  fullWidth
+                  inputProps={{ maxLength: 100000 }}
+                  placeholder="Paste comments here…"
+                  sx={{ '& .MuiOutlinedInput-root': { alignItems: 'flex-start', background: 'white' } }}
+                />
+                <Box sx={{ mt: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                  <TextField
+                    select
+                    label="Source"
+                    value={platform}
+                    onChange={(event) => setPlatform(event.target.value)}
+                    size="small"
+                    sx={{ minWidth: 150 }}
+                  >
+                    <MenuItem value="youtube">YouTube</MenuItem>
+                    <MenuItem value="tiktok">TikTok</MenuItem>
+                    <MenuItem value="other">Other</MenuItem>
+                  </TextField>
+                  <Button
+                    variant="contained"
+                    size="large"
+                    startIcon={loading ? <CircularProgress size={18} color="inherit" /> : <AutoAwesome />}
+                    onClick={handleAnalyze}
+                    disabled={loading || commentCount < 3 || commentCount > 200}
+                    sx={{ px: 4 }}
+                  >
+                    {loading ? 'Reading the signal…' : 'Run LLM analysis'}
+                  </Button>
+                  <Button variant="text" onClick={() => setComments(EXAMPLE_COMMENTS)} disabled={loading}>
+                    Reset example
+                  </Button>
+                </Box>
+                {error && <Alert severity="error" sx={{ mt: 3 }}>{error}</Alert>}
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} md={5}>
+            <Card sx={{ height: '100%', color: 'white', background: 'linear-gradient(145deg, #12204A 0%, #1E40AF 100%)' }}>
+              <CardContent sx={{ p: { xs: 3, md: 4 } }}>
+                <Insights sx={{ fontSize: 36, mb: 3, color: '#93C5FD' }} />
+                <Typography variant="h5" fontWeight={800} sx={{ mb: 2 }}>What the LLM returns</Typography>
+                {[
+                  'A 0–100 audience signal score with category reasons',
+                  'A grounded strategic summary—no invented quotes',
+                  'Keywords and recurring themes from local processing',
+                  'Prioritized, checkable action items',
+                ].map((item) => (
+                  <Box key={item} sx={{ display: 'flex', gap: 1.5, mb: 2 }}>
+                    <CheckCircle sx={{ color: '#86EFAC', fontSize: 20, mt: 0.2 }} />
+                    <Typography sx={{ color: 'rgba(255,255,255,0.86)', lineHeight: 1.55 }}>{item}</Typography>
+                  </Box>
+                ))}
+                <Divider sx={{ my: 3, borderColor: 'rgba(255,255,255,0.16)' }} />
+                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.65)' }}>
+                  The report uses the Responses API with a strict schema, so the UI receives validated fields rather than trying to parse prose.
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+
+        {result && (
+          <MotionBox initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} sx={{ mt: 5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3, flexWrap: 'wrap' }}>
+              <Forum color="primary" />
+              <Typography variant="h4" fontWeight={850}>Audience report</Typography>
+              <Chip label={`${data.comments_analyzed} analyzed`} size="small" />
+              <Chip label={data.model} size="small" variant="outlined" color="primary" />
+            </Box>
+
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={7}>
+                <ScoreBreakdown breakdown={result.scoreBreakdown} totalScore={result.videoScore} />
+              </Grid>
+              <Grid item xs={12} md={5}>
+                <SentimentCard sentiment={data.sentiment} />
+              </Grid>
+              <Grid item xs={12}>
+                <Card>
+                  <CardContent sx={{ p: { xs: 3, md: 4 } }}>
+                    <Typography variant="overline" color="primary" fontWeight={800}>LLM synthesis</Typography>
+                    <Box sx={{ '& h2': { fontSize: '1.25rem', mt: 3 }, '& li': { mb: 1 }, lineHeight: 1.75 }}>
+                      <ReactMarkdown>{result.summary}</ReactMarkdown>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Card sx={{ height: '100%' }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>Top keywords</Typography>
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      {result.keywords?.slice(0, 15).map((keyword) => (
+                        <Chip key={keyword.word} label={`${keyword.word} · ${keyword.count}`} color="primary" variant="outlined" />
+                      ))}
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Card sx={{ height: '100%' }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>Action plan</Typography>
+                    {result.actionItems?.map((item, index) => (
+                      <Box key={item.id || item.title} sx={{ display: 'flex', gap: 1.5, mb: 2.2 }}>
+                        <Chip label={index + 1} size="small" color={item.priority === 'high' ? 'error' : 'primary'} />
+                        <Box>
+                          <Typography fontWeight={750}>{item.title}</Typography>
+                          <Typography variant="body2" color="text.secondary">{item.description}</Typography>
+                        </Box>
+                      </Box>
+                    ))}
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+          </MotionBox>
+        )}
       </Container>
     </Box>
   );
-};
-
-export default Demo;
+}

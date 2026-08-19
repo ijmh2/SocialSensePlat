@@ -4,14 +4,36 @@
  * Supports YouTube and TikTok only
  */
 
-import OpenAI from 'openai';
+import { z } from 'zod/v4';
+import { zodTextFormat } from 'openai/helpers/zod';
 import {
   isEmojiOnly,
   normalizeForDedup,
 } from './commentProcessor.js';
+import { getAIModel, getOpenAIClient } from './aiClient.js';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const EngagementAnalysisSchema = z.object({
+  authenticityScore: z.number().int().min(0).max(100),
+  verdict: z.enum([
+    'Highly Authentic',
+    'Likely Authentic',
+    'Some Concerns',
+    'Significant Red Flags',
+    'High Fraud Risk',
+  ]),
+  engagementAssessment: z.string(),
+  ratioAnalysis: z.string(),
+  commentQuality: z.string(),
+  redFlags: z.array(z.object({
+    severity: z.enum(['high', 'medium', 'low']),
+    flag: z.string(),
+    details: z.string(),
+  })),
+  positiveSignals: z.array(z.object({
+    signal: z.string(),
+    details: z.string(),
+  })),
+  recommendations: z.array(z.string()).min(1).max(6),
 });
 
 // Platform benchmarks (2025 industry data) - YouTube and TikTok only
@@ -148,67 +170,39 @@ ${!hasMetrics ? `IMPORTANT: Since engagement metrics (views/likes) are not avail
 
 Do NOT penalize the score for missing metrics - this is normal for ${platform.toUpperCase()} API limitations.
 
-` : ''}Provide your analysis in this EXACT JSON format:
-{
-  "authenticityScore": <number 0-100>,
-  "verdict": "<Highly Authentic | Likely Authentic | Some Concerns | Significant Red Flags | High Fraud Risk>",
-  "engagementAssessment": "<2-3 sentence analysis${!hasMetrics ? ' focusing on comment engagement patterns' : ''}>",
-  "ratioAnalysis": "${!hasMetrics ? 'Metrics not available for this platform - analysis based on comment patterns only.' : '<2-3 sentence analysis>'}",
-  "commentQuality": "<2-3 sentence analysis>",
-  "redFlags": [
-    {"severity": "high|medium|low", "flag": "<issue>", "details": "<explanation>"}
-  ],
-  "positiveSignals": [
-    {"signal": "<positive indicator>", "details": "<explanation>"}
-  ],
-  "recommendations": ["<recommendation 1>", "<recommendation 2>", "<recommendation 3>"]
-}
-
-Be direct and data-driven. If engagement appears genuine, say so. If there are red flags, be specific.`;
+` : ''}Be direct and data-driven. If engagement appears genuine, say so. If there are red flags, be specific.
+Use 2-3 sentences for each assessment and return 1-6 concrete recommendations in the required schema.`;
 }
 
 /**
  * Main validation function using GPT-5.2
  */
 export async function validateEngagement(videoData, comments, platform) {
-  console.log(`[EngagementValidator] Starting GPT-5.2 validation for ${platform}: ${videoData.title}`);
+  const model = getAIModel();
+  console.log(`[EngagementValidator] Starting ${model} validation for ${platform}: ${videoData.title}`);
 
   const prompt = buildAnalysisPrompt(videoData, comments, platform);
 
-  const completion = await openai.chat.completions.create({
-    model: 'gpt-5.2',
-    messages: [
+  const response = await getOpenAIClient().responses.parse({
+    model,
+    input: [
       {
-        role: 'system',
-        content: 'You are an expert social media engagement analyst. Always respond with valid JSON only, no markdown.',
+        role: 'developer',
+        content: 'You are an evidence-led social media engagement analyst. Do not treat missing platform metrics as suspicious and do not invent evidence.',
       },
       { role: 'user', content: prompt },
     ],
-    max_completion_tokens: 2000,
-    temperature: 0.3,
+    max_output_tokens: 2500,
+    text: {
+      format: zodTextFormat(EngagementAnalysisSchema, 'engagement_analysis'),
+    },
   });
 
-  const response = completion.choices[0]?.message?.content || '{}';
-  console.log(`[EngagementValidator] GPT-5.2 response received`);
-
-  let result;
-  try {
-    // Clean response if wrapped in markdown
-    const cleaned = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    result = JSON.parse(cleaned);
-  } catch (e) {
-    console.error('[EngagementValidator] Failed to parse GPT response:', e);
-    result = {
-      authenticityScore: 50,
-      verdict: 'Analysis Error',
-      engagementAssessment: 'Unable to parse analysis results.',
-      ratioAnalysis: '',
-      commentQuality: '',
-      redFlags: [],
-      positiveSignals: [],
-      recommendations: ['Please try again.'],
-    };
+  const result = response.output_parsed;
+  if (!result) {
+    throw new Error('The model returned no structured engagement analysis');
   }
+  console.log('[EngagementValidator] Structured response received and validated');
 
   // Calculate metrics for display
   const viewCount = parseInt(videoData.viewCount) || 0;

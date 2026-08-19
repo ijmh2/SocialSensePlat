@@ -14,6 +14,7 @@ import analysisRoutes from './routes/analysis.js';
 import webhooksRoutes from './routes/webhooks.js';
 import analyticsRoutes from './routes/analytics.js';
 import scheduledRoutes from './routes/scheduled.js';
+import demoRoutes from './routes/demo.js';
 
 // Import scheduler
 import { startScheduler } from './services/scheduler.js';
@@ -71,6 +72,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // API Routes
+app.use('/api/demo', demoRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/tokens', tokensRoutes);
 app.use('/api/analysis', analysisRoutes);

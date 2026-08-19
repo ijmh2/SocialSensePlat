@@ -38,7 +38,7 @@ const pricing = [
     tokens: '500 tokens',
     price: '$19.99',
     description: 'Best for creators',
-    features: ['500K YouTube comments', '50K TikTok comments', 'Sentiment & keywords', 'AI analysis (coming soon)'],
+    features: ['500K YouTube comments', '50K TikTok comments', 'Sentiment & keywords', 'Structured LLM analysis'],
     popular: true,
   },
   {
@@ -46,7 +46,7 @@ const pricing = [
     tokens: '1,000 tokens',
     price: '$34.99',
     description: 'For teams',
-    features: ['1M YouTube comments', '100K TikTok comments', 'Sentiment & keywords', 'AI analysis (coming soon)'],
+    features: ['1M YouTube comments', '100K TikTok comments', 'Sentiment & keywords', 'Structured LLM analysis'],
   },
 ];
 
@@ -124,23 +124,23 @@ const Landing = () => {
                 fontSize: '1.15rem', fontWeight: 400, lineHeight: 1.75,
                 color: theme.palette.text.secondary, mb: 5, maxWidth: 460,
               }}>
-                Scrape thousands of YouTube and TikTok comments and instantly see sentiment, themes, and top keywords - no AI subscription needed.
+                Filter the noise, map sentiment and themes, then use an evidence-grounded LLM to turn audience comments into clear next actions.
               </Typography>
               <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 4 }}>
                 <Button
                   variant="contained" size="large"
-                  onClick={() => navigate('/signup')}
+                  onClick={() => navigate('/demo')}
                   endIcon={<ArrowForward />}
                   sx={{ px: 4, py: 1.5, fontSize: '1rem' }}
                 >
-                  Start for free
+                  Try the live LLM demo
                 </Button>
                 <Button
                   variant="outlined" size="large"
                   onClick={() => navigate('/demo')}
                   sx={{ px: 4, py: 1.5 }}
                 >
-                  See a demo
+                  View sample report
                 </Button>
               </Box>
               <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
@@ -248,7 +248,7 @@ const Landing = () => {
             {[
               { n: '01', title: 'Paste a URL', body: "Drop in any YouTube or TikTok video URL. We'll fetch the comment count and metadata instantly." },
               { n: '02', title: 'We scrape & filter', body: 'Up to 1M YouTube or 100K TikTok comments fetched. Spam, duplicates, and emoji-only noise removed automatically.' },
-              { n: '03', title: 'See the signal', body: 'Sentiment breakdown, top keywords, recurring themes - all in one clean report you can export to CSV.' },
+              { n: '03', title: 'Decide what to do', body: 'A structured LLM turns the evidence into a score, key findings, and a prioritized action plan.' },
             ].map((step, i) => (
               <Grid item xs={12} md={4} key={step.n}>
                 <MotionBox

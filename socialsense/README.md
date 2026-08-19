@@ -4,14 +4,14 @@ A full-stack social media comment analysis platform with token-based billing. An
 
 ![SocialSense](https://img.shields.io/badge/SocialSense-Platinum-6366F1?style=for-the-badge)
 ![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)
-![Node.js](https://img.shields.io/badge/Node.js-20-339933?style=flat-square&logo=node.js)
+![Node.js](https://img.shields.io/badge/Node.js-22-339933?style=flat-square&logo=node.js)
 ![Supabase](https://img.shields.io/badge/Supabase-Database-3ECF8E?style=flat-square&logo=supabase)
 ![Stripe](https://img.shields.io/badge/Stripe-Payments-635BFF?style=flat-square&logo=stripe)
 
 ## Features
 
 - 🎬 **YouTube & TikTok Analysis** - Scrape and analyze video comments
-- 🤖 **AI-Powered Insights** - GPT-4 powered analysis and recommendations
+- 🤖 **LLM-Powered Insights** - Structured Responses API analysis and recommendations
 - 💰 **Token-Based Billing** - Pay-as-you-go with Stripe integration
 - 📊 **Rich Visualizations** - Charts, themes, and keyword analysis
 - 🎨 **Material Design 3** - Modern, beautiful UI
@@ -20,11 +20,40 @@ A full-stack social media comment analysis platform with token-based billing. An
 
 ---
 
+## LLM-first revival (recommended)
+
+The fastest way to run CommentIQ now is the public paste-comments lab. It needs only
+Node.js and an OpenAI API key; Supabase, Stripe, YouTube, and TikTok credentials are
+not required.
+
+```bash
+npm install
+cp backend/.env.example backend/.env
+# Add OPENAI_API_KEY to backend/.env
+npm run dev:llm
+```
+
+Open `http://localhost:5173/demo`, paste one comment per line, and run the analysis.
+The endpoint filters spam and duplicates locally, calculates a deterministic sentiment
+baseline, and uses the OpenAI Responses API with a strict schema for the strategy report.
+
+Optional configuration:
+
+```env
+OPENAI_MODEL=gpt-5.2
+# OPENAI_BASE_URL=http://localhost:11434/v1
+```
+
+The original authenticated SaaS workflow remains available through `npm run dev` once
+the Supabase, Stripe, and platform credentials below are configured.
+
+---
+
 ## Quick Start
 
 ### Prerequisites
 
-- **Node.js 18+** - [Download](https://nodejs.org/)
+- **Node.js 22+** - [Download](https://nodejs.org/)
 - **npm 9+** (comes with Node.js)
 - **Supabase Account** - [Sign up](https://supabase.com/) (free tier available)
 - **Stripe Account** - [Sign up](https://stripe.com/) (test mode available)

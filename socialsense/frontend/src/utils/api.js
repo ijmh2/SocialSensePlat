@@ -108,6 +108,13 @@ export const analysisApi = {
   compare: (id1, id2) => api.get(`/analysis/compare/${id1}/${id2}`),
 };
 
+export const demoApi = {
+  getStatus: () => api.get('/demo/status'),
+  analyze: (comments, platform = 'other') => api.post('/demo/analyze', { comments, platform }, {
+    timeout: 180000,
+  }),
+};
+
 // Analytics endpoints
 export const analyticsApi = {
   getPerformance: () => api.get('/analytics/performance'),
