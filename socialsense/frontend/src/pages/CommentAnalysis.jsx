@@ -39,11 +39,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { analysisApi } from '../utils/api';
 import { colors, shadows } from '../styles/theme';
 import TikTokIcon from '../components/icons/TikTokIcon';
+import { useAiCapability } from '../hooks/useAiCapability';
 
 const MotionBox = motion(Box);
-
-// AI features are only shown when VITE_AI_ENABLED=true is set
-const AI_ENABLED = import.meta.env.VITE_AI_ENABLED === 'true';
 
 const steps = ['Enter URL', 'Configure Options', 'Review & Analyze'];
 
@@ -51,12 +49,13 @@ const CommentAnalysis = () => {
   const navigate = useNavigate();
   const { tokenBalance, refreshTokenBalance } = useAuth();
   const abortControllerRef = useRef(null);
+  const aiEnabled = useAiCapability();
 
   const [activeStep, setActiveStep] = useState(0);
   const [platform, setPlatform] = useState('youtube');
   const [url, setUrl] = useState('');
   const [maxComments, setMaxComments] = useState(1000);
-  const [includeTextAnalysis, setIncludeTextAnalysis] = useState(true);
+  const [includeTextAnalysis, setIncludeTextAnalysis] = useState(false);
   const [includeMarketing, setIncludeMarketing] = useState(false);
   const [includeEngagement, setIncludeEngagement] = useState(false);
   const [productDescription, setProductDescription] = useState('');
@@ -88,6 +87,15 @@ const CommentAnalysis = () => {
     };
   }, []);
 
+  useEffect(() => {
+    setIncludeTextAnalysis(aiEnabled);
+    if (!aiEnabled) {
+      setIncludeMarketing(false);
+      setIncludeEngagement(false);
+      setVideoFile(null);
+    }
+  }, [aiEnabled]);
+
   // Poll for REAL progress updates from backend
   useEffect(() => {
     let interval;
@@ -112,7 +120,7 @@ const CommentAnalysis = () => {
               setProgressStage('Transcribing video audio...');
             } else if (data.stage === 'analyzing_ai') {
               const waitTime = data.count > 1000 ? '3-5 minutes' : '30-60 seconds';
-              setProgressStage(AI_ENABLED ? `Running AI analysis (this takes ${waitTime})...` : 'Finalising analysis...');
+              setProgressStage(aiEnabled ? `Running AI analysis (this takes ${waitTime})...` : 'Finalising analysis...');
             } else if (data.stage === 'validating_engagement') {
               setProgressStage('Validating engagement authenticity...');
             } else if (data.stage === 'fetching_details') {
@@ -128,7 +136,7 @@ const CommentAnalysis = () => {
       interval = setInterval(checkProgress, 1000);
     }
     return () => clearInterval(interval);
-  }, [analyzing, requestId]);
+  }, [aiEnabled, analyzing, requestId]);
 
   const handleEstimate = async () => {
     if (!url.trim()) {
@@ -154,10 +162,10 @@ const CommentAnalysis = () => {
       const { data } = await analysisApi.estimate({
         url,
         platform,
-        include_text_analysis: includeTextAnalysis,
-        include_marketing: includeMarketing,
-        include_engagement: includeEngagement,
-        has_video: !!videoFile,
+        include_text_analysis: aiEnabled && includeTextAnalysis,
+        include_marketing: aiEnabled && includeMarketing,
+        include_engagement: aiEnabled && includeEngagement,
+        has_video: aiEnabled && !!videoFile,
       });
 
       setEstimate(data);
@@ -204,9 +212,9 @@ const CommentAnalysis = () => {
       formData.append('url', url);
       formData.append('platform', platform);
       formData.append('max_comments', maxComments);
-      formData.append('include_text_analysis', includeTextAnalysis);
-      formData.append('include_marketing', includeMarketing);
-      formData.append('include_engagement', includeEngagement);
+      formData.append('include_text_analysis', aiEnabled && includeTextAnalysis);
+      formData.append('include_marketing', aiEnabled && includeMarketing);
+      formData.append('include_engagement', aiEnabled && includeEngagement);
       formData.append('request_id', newRequestId); // Tell backend to track this ID
 
       if (includeMarketing) {
@@ -429,7 +437,7 @@ const CommentAnalysis = () => {
             />
 
             {/* Optional Video Upload -only shown when AI is enabled */}
-            {AI_ENABLED && <Card sx={{ mb: 3, borderRadius: '16px', boxShadow: shadows.sm, background: colors.background }}>
+            {aiEnabled && <Card sx={{ mb: 3, borderRadius: '16px', boxShadow: shadows.sm, background: colors.background }}>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                   <VideoFile sx={{ color: colors.primary }} />
@@ -520,7 +528,7 @@ const CommentAnalysis = () => {
               </Typography>
             </Alert>
 
-            {AI_ENABLED && <>
+            {aiEnabled && <>
               <Box sx={{ mb: 2 }}>
                 <FormControlLabel
                   control={<Checkbox checked={includeTextAnalysis} onChange={(e) => setIncludeTextAnalysis(e.target.checked)} />}
@@ -654,7 +662,7 @@ const CommentAnalysis = () => {
               </Card>
             </Box>
 
-            {AI_ENABLED && <>
+            {aiEnabled && <>
               <Collapse in={isMyVideo}>
                 <Card sx={{ p: 2, mb: 3, borderRadius: '16px', boxShadow: shadows.sm, background: colors.surface, border: `1px solid ${colors.border}` }}>
                   <Typography variant="body2" fontWeight={600} sx={{ mb: 1, color: colors.textPrimary }}>

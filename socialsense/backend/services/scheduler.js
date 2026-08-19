@@ -11,9 +11,11 @@ import { extractTikTokVideoId, getTikTokCommentCount, scrapeTikTokComments } fro
 import { processComments, extractThemesAndKeywords } from './commentProcessor.js';
 import { analyzeComments } from './openai.js';
 import { aggregateSentiment } from './sentiment.js';
-import { isAIConfigured } from './aiClient.js';
+import { isAIEnabled } from './aiClient.js';
+import { createTokenRefunder, remainingRefund } from './tokenRefund.js';
 
-const AI_ENABLED = process.env.AI_ENABLED !== 'false' && isAIConfigured();
+const AI_ENABLED = isAIEnabled();
+const refundTokens = createTokenRefunder(supabaseAdmin);
 
 // Track if scheduler is running to prevent overlap
 let isProcessing = false;
@@ -68,6 +70,9 @@ function calculateTokenCost(platform, commentCount, includeText, includeMarketin
  */
 async function runScheduledAnalysis(schedule) {
   const startTime = Date.now();
+  let analysisId = null;
+  let tokenCost = 0;
+  let refundedAmount = 0;
   console.log(`[Scheduler] Running scheduled analysis: ${schedule.id} for ${schedule.video_url}`);
 
   try {
@@ -95,35 +100,15 @@ async function runScheduledAnalysis(schedule) {
     const commentsToFetch = Math.min(schedule.max_comments || 1000, videoDetails.commentCount || 1000, MAX_COMMENTS);
 
     // 2. Calculate token cost
-    const tokenCost = calculateTokenCost(
+    tokenCost = calculateTokenCost(
       schedule.platform,
       commentsToFetch,
       schedule.include_text_analysis,
       schedule.include_marketing
     );
 
-    // 3. Check user balance and deduct tokens
-    const { data: deductResult, error: deductError } = await supabaseAdmin.rpc('deduct_tokens', {
-      p_user_id: schedule.user_id,
-      p_amount: tokenCost,
-      p_description: `Scheduled ${schedule.platform} analysis: ${videoDetails.title || videoId}`,
-      p_metadata: { platform: schedule.platform, url: schedule.video_url, scheduled: true, schedule_id: schedule.id }
-    });
-
-    if (deductError || !deductResult?.[0]?.success) {
-      const errorMsg = deductResult?.[0]?.message || 'Insufficient tokens';
-      console.log(`[Scheduler] Token deduction failed for schedule ${schedule.id}: ${errorMsg}`);
-
-      // Update schedule with error and pause it
-      await supabaseAdmin.from('scheduled_analyses').update({
-        last_error: `Insufficient tokens (needed ${tokenCost})`,
-        is_active: false, // Pause the schedule
-      }).eq('id', schedule.id);
-
-      return { success: false, error: errorMsg };
-    }
-
-    // 4. Create analysis record
+    // 3. Create the analysis record before charging so any later compensation
+    // has a durable, auditable analysis ID.
     const { data: analysis, error: createError } = await supabaseAdmin
       .from('analyses')
       .insert({
@@ -146,10 +131,47 @@ async function runScheduledAnalysis(schedule) {
     if (createError) {
       throw new Error('Failed to create analysis record: ' + createError.message);
     }
+    analysisId = analysis.id;
+
+    // 4. Check user balance and deduct tokens.
+    const { data: deductResult, error: deductError } = await supabaseAdmin.rpc('deduct_tokens', {
+      p_user_id: schedule.user_id,
+      p_amount: tokenCost,
+      p_description: `Scheduled ${schedule.platform} analysis: ${videoDetails.title || videoId}`,
+      p_metadata: {
+        platform: schedule.platform,
+        url: schedule.video_url,
+        scheduled: true,
+        schedule_id: schedule.id,
+        analysis_id: analysis.id,
+      }
+    });
+
+    if (deductError || !deductResult?.[0]?.success) {
+      const errorMsg = deductResult?.[0]?.message || 'Insufficient tokens';
+      console.log(`[Scheduler] Token deduction failed for schedule ${schedule.id}: ${errorMsg}`);
+      tokenCost = 0;
+      await supabaseAdmin.from('analyses').update({
+        status: 'failed',
+        error_message: errorMsg,
+      }).eq('id', analysis.id);
+      await supabaseAdmin.from('scheduled_analyses').update({
+        last_error: `Insufficient tokens (needed ${analysis.tokens_used || calculateTokenCost(
+          schedule.platform,
+          commentsToFetch,
+          schedule.include_text_analysis,
+          schedule.include_marketing
+        )})`,
+        is_active: false,
+      }).eq('id', schedule.id);
+
+      return { success: false, error: errorMsg };
+    }
 
     // 5. Run the analysis (simplified version without video upload)
-    await processScheduledAnalysisJob({
+    const jobResult = await processScheduledAnalysisJob({
       analysisId: analysis.id,
+      userId: schedule.user_id,
       videoId,
       platform: schedule.platform,
       commentsToFetch,
@@ -162,6 +184,7 @@ async function runScheduledAnalysis(schedule) {
       competitorNotes: schedule.competitor_notes,
       startTime,
     });
+    refundedAmount += jobResult.refundedAmount;
 
     // 6. Update schedule with success (next_run_at was already updated by claim)
     await supabaseAdmin.from('scheduled_analyses').update({
@@ -177,6 +200,17 @@ async function runScheduledAnalysis(schedule) {
 
   } catch (error) {
     console.error(`[Scheduler] Error running schedule ${schedule.id}:`, error);
+    refundedAmount = Math.max(refundedAmount, Number(error.refundedAmount || 0));
+
+    if (analysisId && tokenCost) {
+      await refundTokens({
+        userId: schedule.user_id,
+        analysisId,
+        amount: remainingRefund(tokenCost, refundedAmount),
+        key: 'scheduled_full_failure',
+        description: `Full refund: scheduled analysis failed (${error.message.slice(0, 80)})`,
+      });
+    }
 
     // Update schedule with error (don't pause - might be temporary)
     await supabaseAdmin.from('scheduled_analyses').update({
@@ -191,10 +225,12 @@ async function runScheduledAnalysis(schedule) {
  * Process a scheduled analysis job (simplified version of the main analysis job)
  */
 async function processScheduledAnalysisJob({
-  analysisId, videoId, platform, commentsToFetch,
+  analysisId, userId, videoId, platform, commentsToFetch,
   includeText, includeMkt, product_description,
   isMyVideo, isCompetitor, creatorNotes, competitorNotes, startTime
 }) {
+  let refundedAmount = 0;
+
   try {
     // 1. Scrape Comments
     let rawComments = [];
@@ -207,6 +243,19 @@ async function processScheduledAnalysisJob({
 
     if (!rawComments || !rawComments.length) {
       throw new Error('No comments found');
+    }
+
+    const paidScrapingCost = calculateTokenCost(platform, commentsToFetch, false, false);
+    const actualScrapingCost = calculateTokenCost(platform, rawComments.length, false, false);
+    if (paidScrapingCost > actualScrapingCost) {
+      const refund = await refundTokens({
+        userId,
+        analysisId,
+        amount: paidScrapingCost - actualScrapingCost,
+        key: 'scheduled_scrape_shortfall',
+        description: `Partial refund: scheduled fetch returned ${rawComments.length} of ${commentsToFetch} comments`,
+      });
+      refundedAmount += refund.refundedAmount;
     }
 
     // 2. Process Comments
@@ -231,13 +280,16 @@ async function processScheduledAnalysisJob({
 
     // 5. Marketing context (if enabled)
     let marketingContext = null;
-    if (includeMkt && product_description) {
-      marketingContext = { description: product_description, image_base64: null };
+    if (includeMkt) {
+      marketingContext = {
+        description: product_description || 'No product description supplied.',
+        image_base64: null,
+      };
     }
 
     // 6. AI Analysis (only when AI_ENABLED)
     let analysisResult = { summary: null, keywords: [], themes: [], stats: null };
-    if (AI_ENABLED && includeText) {
+    if (AI_ENABLED && (includeText || includeMkt)) {
       try {
         analysisResult = await analyzeComments(
           processedComments,
@@ -252,6 +304,16 @@ async function processScheduledAnalysisJob({
         );
       } catch (aiErr) {
         console.error('[Scheduler] AI Error:', aiErr);
+        const aiRefund = (includeText ? TOKEN_COSTS.text_analysis : 0)
+          + (includeMkt ? TOKEN_COSTS.marketing_analysis : 0);
+        const refund = await refundTokens({
+          userId,
+          analysisId,
+          amount: aiRefund,
+          key: 'scheduled_llm_analysis',
+          description: `Refund: scheduled LLM analysis failed (${aiErr.code || 'AI_ANALYSIS_FAILED'})`,
+        });
+        refundedAmount += refund.refundedAmount;
         const fallback = extractThemesAndKeywords(processedComments.map(c => c.clean_text));
         analysisResult = {
           ...fallback,
@@ -271,7 +333,7 @@ async function processScheduledAnalysisJob({
     const processingTime = Date.now() - startTime;
 
     // 7. Final Update
-    await supabaseAdmin.from('analyses').update({
+    const { error: finalUpdateError } = await supabaseAdmin.from('analyses').update({
       status: 'completed',
       summary: analysisResult.summary,
       keywords: analysisResult.keywords,
@@ -286,7 +348,12 @@ async function processScheduledAnalysisJob({
       action_items: analysisResult.actionItems || [],
     }).eq('id', analysisId);
 
+    if (finalUpdateError) {
+      throw new Error(`Failed to save scheduled analysis: ${finalUpdateError.message}`);
+    }
+
     console.log(`[Scheduler] Analysis ${analysisId} completed in ${processingTime}ms`);
+    return { refundedAmount };
 
   } catch (error) {
     console.error('[Scheduler] Job Error:', error);
@@ -294,6 +361,7 @@ async function processScheduledAnalysisJob({
       status: 'failed',
       error_message: error.message
     }).eq('id', analysisId);
+    error.refundedAmount = refundedAmount;
     throw error;
   }
 }

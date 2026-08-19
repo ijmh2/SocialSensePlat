@@ -31,13 +31,15 @@ import { processComments, extractThemesAndKeywords } from '../services/commentPr
 import { analyzeComments, transcribeAudio } from '../services/openai.js';
 import { aggregateSentiment } from '../services/sentiment.js';
 import { validateEngagement } from '../services/engagementValidator.js';
-import { isAIConfigured } from '../services/aiClient.js';
+import { isAIEnabled } from '../services/aiClient.js';
+import { createTokenRefunder, remainingRefund } from '../services/tokenRefund.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const router = express.Router();
 
 // AI is enabled whenever a key exists, unless explicitly disabled.
-const AI_ENABLED = process.env.AI_ENABLED !== 'false' && isAIConfigured();
+const AI_ENABLED = isAIEnabled();
+const refundTokens = createTokenRefunder(supabaseAdmin);
 if (!AI_ENABLED) console.log('AI features disabled (add OPENAI_API_KEY and ensure AI_ENABLED is not false)');
 
 /**
@@ -454,22 +456,8 @@ router.post('/comments', authenticate, uploadRateLimiter, uploadFields, async (r
       });
     }
 
-    // 3. Check Balance & Deduct
-    const { data: deductResult, error: deductError } = await supabaseAdmin.rpc('deduct_tokens', {
-      p_user_id: req.user.id,
-      p_amount: tokenCost,
-      p_description: `${platform} analysis: ${videoDetails.title || videoId}`,
-      p_metadata: { platform, url, has_video: !!videoFile }
-    });
-
-    if (deductError || !deductResult?.[0]?.success) {
-      // Cleanup uploaded files
-      if (productImageFile) await safeUnlink(productImageFile.path, 'productImage');
-      if (videoFile) await safeUnlink(videoFile.path, 'videoFile');
-      return res.status(402).json({ error: deductResult?.[0]?.message || 'Insufficient tokens' });
-    }
-
-    // 4. Create Record
+    // 3. Create the record before charging so every successful deduction has a
+    // durable analysis ID that can be used for an idempotent compensation.
     const { data: analysis, error: createError } = await supabaseAdmin
       .from('analyses')
       .insert({
@@ -494,6 +482,24 @@ router.post('/comments', authenticate, uploadRateLimiter, uploadFields, async (r
       if (productImageFile) await safeUnlink(productImageFile.path, 'productImage');
       if (videoFile) await safeUnlink(videoFile.path, 'videoFile');
       return res.status(500).json({ error: 'Failed to create analysis record' });
+    }
+
+    // 4. Check balance and deduct.
+    const { data: deductResult, error: deductError } = await supabaseAdmin.rpc('deduct_tokens', {
+      p_user_id: req.user.id,
+      p_amount: tokenCost,
+      p_description: `${platform} analysis: ${videoDetails.title || videoId}`,
+      p_metadata: { platform, url, has_video: !!videoFile, analysis_id: analysis.id }
+    });
+
+    if (deductError || !deductResult?.[0]?.success) {
+      await supabaseAdmin.from('analyses').update({
+        status: 'failed',
+        error_message: deductResult?.[0]?.message || 'Token deduction failed',
+      }).eq('id', analysis.id);
+      if (productImageFile) await safeUnlink(productImageFile.path, 'productImage');
+      if (videoFile) await safeUnlink(videoFile.path, 'videoFile');
+      return res.status(402).json({ error: deductResult?.[0]?.message || 'Insufficient tokens' });
     }
 
     // 5. Start Background Job
@@ -932,22 +938,6 @@ async function extractAudio(videoPath, timeoutMs = 5 * 60 * 1000) {
   });
 }
 
-// Background Worker Function (Unified: comments + optional video + optional engagement)
-async function refundTokens(userId, analysisId, amount, reason) {
-  if (amount <= 0) return;
-  const { error } = await supabaseAdmin.rpc('refund_tokens', {
-    p_user_id: userId,
-    p_amount: amount,
-    p_analysis_id: analysisId,
-    p_description: reason,
-  });
-  if (error) {
-    logger.error('Token refund failed — manual remediation required', { userId, analysisId, amount, error });
-  } else {
-    logger.info('Token refund issued', { userId, analysisId, amount, reason });
-  }
-}
-
 function calcScrapingCost(platform, commentCount) {
   if (platform === 'youtube') {
     return Math.max(1, Math.ceil(commentCount / 1000) * TOKEN_COSTS.youtube_per_1000_comments);
@@ -962,6 +952,8 @@ async function processAnalysisJob({
   isMyVideo = false, isCompetitor = false, creatorNotes = null, competitorNotes = null, harshFeedback = false,
   videoDetails = null
 }) {
+  let refundedAmount = 0;
+
   try {
     // 1. Scrape Comments
     let rawComments = [];
@@ -995,8 +987,14 @@ async function processAnalysisJob({
       const actualScrapingCost = calcScrapingCost(platform, rawComments.length);
       const refundAmount = paidScrapingCost - actualScrapingCost;
       if (refundAmount > 0) {
-        await refundTokens(userId, analysisId, refundAmount,
-          `Partial refund: fetched ${rawComments.length} of ${commentsToFetch} comments`);
+        const refund = await refundTokens({
+          userId,
+          analysisId,
+          amount: refundAmount,
+          key: 'scrape_shortfall',
+          description: `Partial refund: fetched ${rawComments.length} of ${commentsToFetch} comments`,
+        });
+        refundedAmount += refund.refundedAmount;
       }
     }
 
@@ -1026,6 +1024,7 @@ async function processAnalysisJob({
     // 5. Video Processing (only when AI_ENABLED and video file provided)
     let videoFrames = null;
     let videoTranscript = null;
+    let videoAnalysisRefunded = false;
 
     if (AI_ENABLED && videoFilePath) {
       // 5a. Extract frames
@@ -1049,6 +1048,18 @@ async function processAnalysisJob({
         console.warn('[Video] Audio transcription failed:', audioErr.message);
       }
 
+      if (!videoFrames?.length && !videoTranscript) {
+        const refund = await refundTokens({
+          userId,
+          analysisId,
+          amount: TOKEN_COSTS.video_analysis,
+          key: 'video_processing',
+          description: 'Refund: video frames and audio processing both failed',
+        });
+        refundedAmount += refund.refundedAmount;
+        videoAnalysisRefunded = refund.refundedAmount > 0;
+      }
+
       // Cleanup video file
       await safeUnlink(videoFilePath, 'videoFilePath');
     }
@@ -1060,8 +1071,11 @@ async function processAnalysisJob({
 
     // 6. Prepare Marketing Context
     let marketingContext = null;
-    if (AI_ENABLED && includeMkt && product_description) {
-      marketingContext = { description: product_description, image_base64: null };
+    if (AI_ENABLED && includeMkt) {
+      marketingContext = {
+        description: product_description || 'No product description supplied.',
+        image_base64: null,
+      };
       if (productImagePath) {
         try {
           const buff = await fs.readFile(productImagePath);
@@ -1072,17 +1086,24 @@ async function processAnalysisJob({
 
     // 7. AI Analysis (only when AI_ENABLED and text analysis requested)
     let analysisResult = { summary: null, keywords: [], themes: [], stats: null };
-    if (AI_ENABLED && includeText) {
+    if (AI_ENABLED && (includeText || includeMkt || videoFrames?.length || videoTranscript)) {
       if (request_id) progressMap.set(request_id, { stage: 'analyzing_ai', count: rawComments.length, percent: 88 });
 
       try {
         analysisResult = await analyzeComments(processedComments, platform, marketingContext, videoTranscript, videoFrames, isMyVideo, creatorNotes, isCompetitor, competitorNotes, harshFeedback);
       } catch (aiErr) {
         console.error('AI Error:', aiErr);
-        const aiRefund = TOKEN_COSTS.text_analysis
-          + (includeMkt ? TOKEN_COSTS.marketing_analysis : 0);
-        await refundTokens(userId, analysisId, aiRefund,
-          `Refund: LLM analysis failed (${aiErr.code || 'AI_ANALYSIS_FAILED'})`);
+        const aiRefund = (includeText ? TOKEN_COSTS.text_analysis : 0)
+          + (includeMkt ? TOKEN_COSTS.marketing_analysis : 0)
+          + (videoFilePath && !videoAnalysisRefunded ? TOKEN_COSTS.video_analysis : 0);
+        const refund = await refundTokens({
+          userId,
+          analysisId,
+          amount: aiRefund,
+          key: 'llm_analysis',
+          description: `Refund: LLM analysis failed (${aiErr.code || 'AI_ANALYSIS_FAILED'})`,
+        });
+        refundedAmount += refund.refundedAmount;
         const fallback = extractThemesAndKeywords(processedComments.map(c => c.clean_text));
         analysisResult = {
           ...fallback,
@@ -1109,6 +1130,14 @@ async function processAnalysisJob({
         console.log(`[Analysis] Engagement validation complete - Score: ${engagementResult.authenticityScore}`);
       } catch (engErr) {
         console.error('[Analysis] Engagement validation failed:', engErr);
+        const refund = await refundTokens({
+          userId,
+          analysisId,
+          amount: TOKEN_COSTS.engagement_validation,
+          key: 'engagement_validation',
+          description: 'Refund: engagement validation failed',
+        });
+        refundedAmount += refund.refundedAmount;
         engagementResult = {
           authenticityScore: null,
           verdict: 'Analysis Error',
@@ -1160,8 +1189,13 @@ async function processAnalysisJob({
 
     // Full refund on total failure — user got nothing
     if (tokenCost && userId) {
-      await refundTokens(userId, analysisId, tokenCost,
-        `Full refund: analysis failed (${error.message.slice(0, 80)})`);
+      await refundTokens({
+        userId,
+        analysisId,
+        amount: remainingRefund(tokenCost, refundedAmount),
+        key: 'full_failure',
+        description: `Full refund: analysis failed (${error.message.slice(0, 80)})`,
+      });
     }
 
     if (productImagePath) await safeUnlink(productImagePath, 'productImagePath');

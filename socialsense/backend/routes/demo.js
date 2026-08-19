@@ -2,7 +2,8 @@ import express from 'express';
 import { processComments } from '../services/commentProcessor.js';
 import { aggregateSentiment } from '../services/sentiment.js';
 import { analyzeComments } from '../services/openai.js';
-import { getAIModel, isAIConfigured } from '../services/aiClient.js';
+import { getAIModel, isAIEnabled } from '../services/aiClient.js';
+import { demoRateLimiter } from '../middleware/demoRateLimit.js';
 
 const router = express.Router();
 
@@ -21,15 +22,19 @@ function normalizeComments(input) {
     .map((value) => value.slice(0, MAX_COMMENT_LENGTH));
 }
 
+export function getSubstantiveComments(comments) {
+  return comments.filter((comment) => !comment.is_generic_praise && !comment.is_off_topic);
+}
+
 router.get('/status', (req, res) => {
   res.json({
-    status: isAIConfigured() ? 'ready' : 'configuration_required',
-    model: isAIConfigured() ? getAIModel() : null,
+    status: isAIEnabled() ? 'ready' : 'configuration_required',
+    model: isAIEnabled() ? getAIModel() : null,
   });
 });
 
-router.post('/analyze', async (req, res) => {
-  if (!isAIConfigured()) {
+router.post('/analyze', demoRateLimiter, async (req, res) => {
+  if (!isAIEnabled()) {
     return res.status(503).json({
       error: 'LLM analysis is not configured. Add OPENAI_API_KEY to backend/.env.',
       code: 'AI_NOT_CONFIGURED',
@@ -58,40 +63,55 @@ router.post('/analyze', async (req, res) => {
       }))
     );
 
-    if (comments.length < 3) {
+    const substantiveComments = getSubstantiveComments(comments);
+    if (substantiveComments.length < 3) {
       return res.status(422).json({
-        error: 'Too few substantive comments remained after spam and duplicate filtering.',
+        error: 'Add at least 3 substantive comments; generic praise and off-topic text are not analyzed.',
         filter_stats: filterStats,
       });
     }
 
     const sentiment = aggregateSentiment(
-      comments.map((comment) => comment.sentiment).filter(Boolean)
+      substantiveComments.map((comment) => comment.sentiment).filter(Boolean)
     );
 
-    const result = await analyzeComments(
-      comments,
-      platform,
-      null,
-      null,
-      null,
-      true,
-      null,
-      false,
-      null,
-      false
-    );
+    const abortController = new AbortController();
+    const abortOnDisconnect = () => abortController.abort();
+    req.once('aborted', abortOnDisconnect);
+
+    let result;
+    try {
+      result = await analyzeComments(
+        substantiveComments,
+        platform,
+        null,
+        null,
+        null,
+        true,
+        null,
+        false,
+        null,
+        false,
+        { timeoutMs: 165000, signal: abortController.signal }
+      );
+    } finally {
+      req.off('aborted', abortOnDisconnect);
+    }
 
     res.json({
       result,
       sentiment,
       filter_stats: filterStats,
-      comments_analyzed: comments.length,
+      comments_analyzed: substantiveComments.length,
       model: getAIModel(),
     });
   } catch (error) {
     console.error(`[Demo] LLM analysis failed (${error.code || 'AI_ANALYSIS_FAILED'})`);
-    res.status(error.code === 'AI_NOT_CONFIGURED' ? 503 : 502).json({
+    if (req.aborted || res.headersSent) return;
+    const status = error.code === 'AI_NOT_CONFIGURED'
+      ? 503
+      : error.code === 'AI_RATE_LIMITED' ? 429 : 502;
+    res.status(status).json({
       error: error.code === 'AI_AUTH_FAILED'
         ? 'The server OpenAI key is invalid or expired. Update OPENAI_API_KEY and restart the API.'
         : 'The LLM analysis could not be completed. Please try again.',

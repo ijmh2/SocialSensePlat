@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
 import demoRoutes from './routes/demo.js';
 
 export function createDemoApp() {
@@ -14,14 +13,6 @@ export function createDemoApp() {
     credentials: false,
   }));
   app.use(express.json({ limit: '200kb' }));
-  app.use('/api/demo', rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 20,
-    standardHeaders: true,
-    legacyHeaders: false,
-    validate: { trustProxy: false },
-  }));
-
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', service: 'commentiq-llm' });
   });

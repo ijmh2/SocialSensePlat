@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit';
 import { authenticate } from '../middleware/auth.js';
 import { validateUUID } from '../middleware/validation.js';
 import { supabaseAdmin } from '../config/supabase.js';
+import { isAIEnabled } from '../services/aiClient.js';
 
 const router = express.Router();
 
@@ -189,8 +190,8 @@ router.post('/', authenticate, scheduleLimiter, async (req, res) => {
                 video_title: video_title || null,
                 frequency,
                 max_comments,
-                include_text_analysis,
-                include_marketing,
+                include_text_analysis: isAIEnabled() && include_text_analysis === true,
+                include_marketing: isAIEnabled() && include_marketing === true,
                 product_description: product_description || null,
                 is_my_video,
                 is_competitor,
@@ -233,6 +234,11 @@ router.patch('/:id', authenticate, validateUUID('id'), scheduleLimiter, async (r
             if (req.body[field] !== undefined) {
                 updates[field] = req.body[field];
             }
+        }
+
+        if (!isAIEnabled()) {
+            if (updates.include_text_analysis !== undefined) updates.include_text_analysis = false;
+            if (updates.include_marketing !== undefined) updates.include_marketing = false;
         }
 
         // If frequency changed, recalculate next run

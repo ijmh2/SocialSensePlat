@@ -148,7 +148,7 @@ const ScoreBreakdown = ({ breakdown, totalScore }) => {
           }}
         >
           <Typography variant="caption" color="text.secondary">
-            <strong>How it's calculated:</strong> Engagement (40%) + Content Fit (30%) + Conversion (20%) - Red Flags (up to 10%)
+            <strong>How it's calculated:</strong> Engagement (40) + Content Fit (30) + Conversion (20) + a 10-point risk allowance - Red Flag penalty (0-10)
           </Typography>
         </Box>
       </CardContent>

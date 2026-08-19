@@ -41,11 +41,18 @@ Optional configuration:
 
 ```env
 OPENAI_MODEL=gpt-5.2
+# APP_MODE=demo                 # Force the minimal backend in production
+# DEMO_RATE_LIMIT_MAX=20        # Per IP, per 15 minutes
 # OPENAI_BASE_URL=http://localhost:11434/v1
 ```
 
 The original authenticated SaaS workflow remains available through `npm run dev` once
 the Supabase, Stripe, and platform credentials below are configured.
+
+`npm start` and the included Railway configuration choose demo mode automatically when
+Supabase or Stripe credentials are absent. Set `APP_MODE=full` to require the complete
+authenticated service. Full deployments must also apply migrations in `migrations/`,
+including `20260819_idempotent_refunds.sql`, before processing paid analyses.
 
 ---
 
@@ -313,6 +320,7 @@ Update these in production:
 # Backend
 NODE_ENV=production
 FRONTEND_URL=https://your-frontend-domain.com
+APP_MODE=demo # use "full" after configuring Supabase, Stripe, and migrations
 
 # Frontend
 VITE_API_URL=https://your-backend-domain.com/api

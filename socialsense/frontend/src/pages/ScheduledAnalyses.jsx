@@ -46,10 +46,9 @@ import toast from 'react-hot-toast';
 import { scheduledApi, analysisApi } from '../utils/api';
 import { colors, shadows } from '../styles/theme';
 import TikTokIcon from '../components/icons/TikTokIcon';
+import { useAiCapability } from '../hooks/useAiCapability';
 
 const MotionBox = motion(Box);
-
-const AI_ENABLED = import.meta.env.VITE_AI_ENABLED === 'true';
 
 const frequencyLabels = {
     daily: 'Every Day',
@@ -68,6 +67,7 @@ const frequencyColors = {
 const ScheduledAnalyses = () => {
     const navigate = useNavigate();
     const theme = useTheme();
+    const aiEnabled = useAiCapability();
 
     const [schedules, setSchedules] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -80,7 +80,7 @@ const ScheduledAnalyses = () => {
     const [formTitle, setFormTitle] = useState('');
     const [formFrequency, setFormFrequency] = useState('weekly');
     const [formMaxComments, setFormMaxComments] = useState(1000);
-    const [formTextAnalysis, setFormTextAnalysis] = useState(true);
+    const [formTextAnalysis, setFormTextAnalysis] = useState(false);
     const [formMarketing, setFormMarketing] = useState(false);
     const [formIsMyVideo, setFormIsMyVideo] = useState(false);
     const [formIsCompetitor, setFormIsCompetitor] = useState(false);
@@ -89,6 +89,11 @@ const ScheduledAnalyses = () => {
     useEffect(() => {
         loadSchedules();
     }, []);
+
+    useEffect(() => {
+        setFormTextAnalysis(aiEnabled);
+        if (!aiEnabled) setFormMarketing(false);
+    }, [aiEnabled]);
 
     const loadSchedules = async () => {
         try {
@@ -118,8 +123,8 @@ const ScheduledAnalyses = () => {
                 video_title: formTitle || null,
                 frequency: formFrequency,
                 max_comments: formMaxComments,
-                include_text_analysis: formTextAnalysis,
-                include_marketing: formMarketing,
+                include_text_analysis: aiEnabled && formTextAnalysis,
+                include_marketing: aiEnabled && formMarketing,
                 is_my_video: formIsMyVideo,
                 is_competitor: formIsCompetitor,
             });
@@ -166,8 +171,8 @@ const ScheduledAnalyses = () => {
                     platform: schedule.platform,
                     url: schedule.video_url,
                     maxComments: schedule.max_comments,
-                    includeTextAnalysis: schedule.include_text_analysis,
-                    includeMarketing: schedule.include_marketing,
+                    includeTextAnalysis: aiEnabled && schedule.include_text_analysis,
+                    includeMarketing: aiEnabled && schedule.include_marketing,
                     isMyVideo: schedule.is_my_video,
                     isCompetitor: schedule.is_competitor,
                 },
@@ -182,7 +187,7 @@ const ScheduledAnalyses = () => {
         setFormPlatform('youtube');
         setFormFrequency('weekly');
         setFormMaxComments(1000);
-        setFormTextAnalysis(true);
+        setFormTextAnalysis(aiEnabled);
         setFormMarketing(false);
         setFormIsMyVideo(false);
         setFormIsCompetitor(false);
@@ -688,7 +693,7 @@ const ScheduledAnalyses = () => {
                     />
 
                     {/* Options */}
-                    {AI_ENABLED && (
+                    {aiEnabled && (
                     <Box sx={{ mb: 2 }}>
                         <FormControlLabel
                             control={<Checkbox checked={formTextAnalysis} onChange={(e) => setFormTextAnalysis(e.target.checked)} />}

@@ -7,4 +7,4 @@ nixPkgs = ["nodejs_22", "ffmpeg"]
 cmds = ["npm ci || npm install"]
 
 [start]
-cmd = "node server.js"
+cmd = "node startServer.js"
