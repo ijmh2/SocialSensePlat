@@ -12,8 +12,6 @@ import { processComments, extractThemesAndKeywords } from './commentProcessor.js
 import { analyzeComments } from './openai.js';
 import { aggregateSentiment } from './sentiment.js';
 
-const AI_ENABLED = process.env.AI_ENABLED === 'true';
-
 // Track if scheduler is running to prevent overlap
 let isProcessing = false;
 
@@ -56,8 +54,8 @@ function calculateTokenCost(platform, commentCount, includeText, includeMarketin
     cost += Math.max(1, Math.ceil(commentCount / 100) * TOKEN_COSTS.tiktok_per_100_comments);
   }
 
-  if (AI_ENABLED && includeText) cost += TOKEN_COSTS.text_analysis;
-  if (AI_ENABLED && includeMarketing) cost += TOKEN_COSTS.marketing_analysis;
+  if (includeText) cost += TOKEN_COSTS.text_analysis;
+  if (includeMarketing) cost += TOKEN_COSTS.marketing_analysis;
 
   return Math.max(1, cost);
 }
@@ -234,9 +232,9 @@ async function processScheduledAnalysisJob({
       marketingContext = { description: product_description, image_base64: null };
     }
 
-    // 6. AI Analysis (only when AI_ENABLED)
+    // 6. AI Analysis (only when text analysis requested)
     let analysisResult = { summary: null, keywords: [], themes: [], stats: null };
-    if (AI_ENABLED && includeText) {
+    if (includeText) {
       try {
         analysisResult = await analyzeComments(
           processedComments,

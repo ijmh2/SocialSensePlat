@@ -42,9 +42,6 @@ import TikTokIcon from '../components/icons/TikTokIcon';
 
 const MotionBox = motion(Box);
 
-// AI features are only shown when VITE_AI_ENABLED=true is set
-const AI_ENABLED = import.meta.env.VITE_AI_ENABLED === 'true';
-
 const steps = ['Enter URL', 'Configure Options', 'Review & Analyze'];
 
 const CommentAnalysis = () => {
@@ -112,7 +109,7 @@ const CommentAnalysis = () => {
               setProgressStage('Transcribing video audio...');
             } else if (data.stage === 'analyzing_ai') {
               const waitTime = data.count > 1000 ? '3-5 minutes' : '30-60 seconds';
-              setProgressStage(AI_ENABLED ? `Running AI analysis (this takes ${waitTime})...` : 'Finalising analysis...');
+              setProgressStage(`Running AI analysis (this takes ${waitTime})...`);
             } else if (data.stage === 'validating_engagement') {
               setProgressStage('Validating engagement authenticity...');
             } else if (data.stage === 'fetching_details') {
@@ -428,8 +425,8 @@ const CommentAnalysis = () => {
               sx={{ mb: 3 }}
             />
 
-            {/* Optional Video Upload -only shown when AI is enabled */}
-            {AI_ENABLED && <Card sx={{ mb: 3, borderRadius: '16px', boxShadow: shadows.sm, background: colors.background }}>
+            {/* Optional Video Upload */}
+            <Card sx={{ mb: 3, borderRadius: '16px', boxShadow: shadows.sm, background: colors.background }}>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                   <VideoFile sx={{ color: colors.primary }} />
@@ -465,7 +462,7 @@ const CommentAnalysis = () => {
                   </Button>
                 )}
               </CardContent>
-            </Card>}
+            </Card>
 
             <Button
               fullWidth
@@ -520,7 +517,7 @@ const CommentAnalysis = () => {
               </Typography>
             </Alert>
 
-            {AI_ENABLED && <>
+            <>
               <Box sx={{ mb: 2 }}>
                 <FormControlLabel
                   control={<Checkbox checked={includeTextAnalysis} onChange={(e) => setIncludeTextAnalysis(e.target.checked)} />}
@@ -587,7 +584,7 @@ const CommentAnalysis = () => {
                   </Button>
                 </Card>
               </Collapse>
-            </>}
+            </>
 
             <Divider sx={{ my: 3 }} />
 
@@ -654,7 +651,7 @@ const CommentAnalysis = () => {
               </Card>
             </Box>
 
-            {AI_ENABLED && <>
+            <>
               <Collapse in={isMyVideo}>
                 <Card sx={{ p: 2, mb: 3, borderRadius: '16px', boxShadow: shadows.sm, background: colors.surface, border: `1px solid ${colors.border}` }}>
                   <Typography variant="body2" fontWeight={600} sx={{ mb: 1, color: colors.textPrimary }}>
@@ -724,7 +721,7 @@ const CommentAnalysis = () => {
                   sx={{ display: 'flex', alignItems: 'flex-start' }}
                 />
               </Box>
-            </>}
+            </>
 
             <Box sx={{ display: 'flex', gap: 2 }}>
               <Button

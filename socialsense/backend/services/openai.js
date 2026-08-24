@@ -2,9 +2,8 @@ import OpenAI from 'openai';
 import fs from 'fs';
 import { extractThemesAndKeywords, stratifiedSample } from './commentProcessor.js';
 
-// AI features are gated by AI_ENABLED=true env var
 if (!process.env.OPENAI_API_KEY) {
-  console.warn('⚠️  OPENAI_API_KEY is not set — AI features will be unavailable (set AI_ENABLED=true to enable)');
+  console.warn('⚠️  OPENAI_API_KEY is not set — AI features will be unavailable');
 }
 
 const openai = new OpenAI({

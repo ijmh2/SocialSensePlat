@@ -38,7 +38,7 @@ const pricing = [
     tokens: '500 tokens',
     price: '$19.99',
     description: 'Best for creators',
-    features: ['500K YouTube comments', '50K TikTok comments', 'Sentiment & keywords', 'AI analysis (coming soon)'],
+    features: ['500K YouTube comments', '50K TikTok comments', 'Sentiment & keywords', 'Full AI analysis'],
     popular: true,
   },
   {
@@ -46,7 +46,7 @@ const pricing = [
     tokens: '1,000 tokens',
     price: '$34.99',
     description: 'For teams',
-    features: ['1M YouTube comments', '100K TikTok comments', 'Sentiment & keywords', 'AI analysis (coming soon)'],
+    features: ['1M YouTube comments', '100K TikTok comments', 'Sentiment & keywords', 'Full AI analysis'],
   },
 ];
 
@@ -124,7 +124,7 @@ const Landing = () => {
                 fontSize: '1.15rem', fontWeight: 400, lineHeight: 1.75,
                 color: theme.palette.text.secondary, mb: 5, maxWidth: 460,
               }}>
-                Scrape thousands of YouTube and TikTok comments and instantly see sentiment, themes, and top keywords - no AI subscription needed.
+                Scrape thousands of YouTube and TikTok comments and instantly see sentiment, themes, and top keywords - with GPT-powered analysis and marketing insights on top.
               </Typography>
               <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 4 }}>
                 <Button

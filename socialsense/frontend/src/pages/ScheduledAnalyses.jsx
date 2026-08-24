@@ -49,8 +49,6 @@ import TikTokIcon from '../components/icons/TikTokIcon';
 
 const MotionBox = motion(Box);
 
-const AI_ENABLED = import.meta.env.VITE_AI_ENABLED === 'true';
-
 const frequencyLabels = {
     daily: 'Every Day',
     weekly: 'Every Week',
@@ -688,7 +686,6 @@ const ScheduledAnalyses = () => {
                     />
 
                     {/* Options */}
-                    {AI_ENABLED && (
                     <Box sx={{ mb: 2 }}>
                         <FormControlLabel
                             control={<Checkbox checked={formTextAnalysis} onChange={(e) => setFormTextAnalysis(e.target.checked)} />}
@@ -699,7 +696,6 @@ const ScheduledAnalyses = () => {
                             label={<Typography variant="body2">Marketing Analysis (+5 tokens)</Typography>}
                         />
                     </Box>
-                    )}
 
                     {/* Video ownership */}
                     <Box sx={{ display: 'flex', gap: 1.5, mb: 1 }}>
